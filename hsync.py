@@ -256,6 +256,11 @@ def hashlist_generate(srcpath, opts):
         for filename in files:
 
             fpath = os.path.join(root, filename)
+
+            if fpath == opts.hash_file:
+                log.debug("Skipping pre-existing hash file '%s'", opts.hash_file)
+                continue
+
             skipped = False
             if not opts.no_ignore_files:
                 for fi in fileignore:
@@ -340,6 +345,7 @@ def hashlist_check(dstpath, src_hashlist, opts):
     for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
 
         if fpath in dst_fdict:
+
             if src_fdict[fpath].can_compare(dst_fdict[fpath]):
                 if src_fdict[fpath].compare_contents(dst_fdict[fpath]):
                     log.debug("%s: present and hash verified", fpath)
@@ -380,6 +386,7 @@ def fetch_needed(needed, source, opts):
 
     r = SystemRandom()
     mapper = UidGidMapper()
+    errorCount = 0
 
     if not source.endswith('/'):
         source += "/"
@@ -389,6 +396,13 @@ def fetch_needed(needed, source, opts):
         source_url = urlparse.urljoin(source, fh.fpath)
         if fh.is_file:
             contents = fetch_contents(source_url, opts)
+            chk = hashlib.sha256()
+            chk.update(contents)
+            if chk.hexdigest() != fh.hashstr:
+                log.warn("File '%s' failed checksum verification!", fh.fpath)
+                errorCount += 1
+                continue
+
             tgt_file = os.path.join(opts.dest_dir, fh.fpath)
             tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xfffffffff)
             log.debug("Will write to '%s'", tgt_file_rnd)
@@ -449,7 +463,12 @@ def fetch_needed(needed, source, opts):
                 if os.fchmod(tgt_dir, fh.mode) == -1:
                     raise OSOperationFailedError("Failed to fchmod('%s', %06o)",
                                                 tgt_dir, fh.mode)
-                
+    if errorCount == 0:
+        log.info("Fetch completed successfully")
+        return True
+    else:
+        log.warn("Fetch failed with %d errors", errorCount)
+        return False           
                 
 
 def delete_not_needed(not_needed, target, opts):
@@ -480,8 +499,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
     return contents
 
 
-if __name__ == '__main__':
-
+def main(cmdargs):
     p = optparse.OptionParser()
 
     send = optparse.OptionGroup(p, "Send-side options")
@@ -511,7 +529,7 @@ if __name__ == '__main__':
         help="Enable debugging output")
     p.add_option_group(meta)
 
-    (opt, args) = p.parse_args()
+    (opt, args) = p.parse_args(args=cmdargs)
 
     level = logging.WARNING
     if opt.verbose:
@@ -523,14 +541,14 @@ if __name__ == '__main__':
 
     if opt.source_dir and opt.dest_dir:
         log.error("Send-side and receive-side options can't be mixed")
-        sys.exit(1)
+        return False
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug("hashlib.algorithms: %s", hashlib.algorithms)
 
     if not 'sha256' in hashlib.algorithms:
         log.error("No SHA256 implementation in hashlib!")
-        sys.exit(1)
+        return False
 
     # Send-side.
     if opt.source_dir:
@@ -543,11 +561,11 @@ if __name__ == '__main__':
                 print >>sigfile, fh.presentation_format()
             print >>sigfile, "FINAL: %s" % (hash_of_hashlist(hashlist))
             sigfile.close()
-            sys.exit(0)
+            return True
 
         else:
             log.error("Send-side generate failed")
-            sys.exit(1)
+            return False
 
     # Receive-side.
     if opt.dest_dir:
@@ -561,6 +579,13 @@ if __name__ == '__main__':
         src_hashlist = hashlist_from_stringlist(strfile, opt)
         (needed, not_needed) = hashlist_check(opt.dest_dir, src_hashlist, opt)
 
+        # XXX error handling
         fetch_needed(needed, opt.source_url, opt)
         delete_not_needed(not_needed, opt.dest_dir, opt)
+        return True
+
+    
+if __name__ == '__main__':
+    if not main(sys.argv[1:]):
+        sys.exit(1)
         
