@@ -10,6 +10,7 @@ import logging
 import optparse
 import os.path
 import pwd
+from random import SystemRandom
 import re
 from stat import *
 import sys
@@ -26,17 +27,52 @@ dirignore = [
     re.compile(r'^(?:CVS|\.git|\.svn)'),
 ]
 
+class UidGidMapper(object):
+
+    uid_to_name = {}
+    name_to_uid = {}
+    gid_to_name = {}
+    name_to_gid = {}
+
+    def get_name_for_uid(self, uid):
+        if not uid in self.uid_to_name:
+            name = pwd.getpwuid(uid).pw_name
+            self.uid_to_name[uid] = name
+            self.name_to_uid[name]  = uid
+        return self.uid_to_name[uid]
+
+    
+    def get_name_for_gid(self, gid):
+        if not gid in self.gid_to_name:
+            name = grp.getgrgid(gid).gr_name
+            self.gid_to_name[gid] = name
+            self.name_to_gid[name] = gid
+        return self.gid_to_name[gid]
+
+
+    def get_uid_for_name(self, name):
+        if not name is self.name_to_uid:
+            uid = pwd.getpwnam(name).pw_uid
+            self.name_to_uid[name] = uid
+            self.uid_to_name[uid] = name
+        return self.name_to_uid[name]
+
+
+    def get_gid_for_name(self, group):
+        if not group in self.name_to_gid:
+            gid = grp.getgrnam(group).gr_gid
+            self.name_to_gid[group] = gid
+            self.gid_to_name[gid] = group
+        return self.name_to_gid[group]
+
 
 class NotHashableException(Exception): pass
 
 class FileHash(object):
 
     blankhash = "0" * 64
-    uid_to_name = {}
-    name_to_uid = {}
-    gid_to_name = {}
-    name_to_gid = {}
 
+    mapper = UidGidMapper()
 
     def __init__(self):
         self.hash_safe = False
@@ -53,9 +89,9 @@ class FileHash(object):
         self.stat = os.stat(self.fullpath)
         mode = self.mode = self.stat.st_mode
         self.uid = self.stat.st_uid
-        self.user = self.get_name_for_uid()
+        self.user = self.mapper.get_name_for_uid(self.uid)
         self.gid = self.stat.st_gid
-        self.group = self.get_name_for_gid()
+        self.group = self.mapper.get_name_for_gid(self.gid)
 
         self.ignore = False
         self.has_real_hash = False
@@ -69,7 +105,7 @@ class FileHash(object):
             self.is_dir = False
             self.is_file = True
             self.hash_file()
-            self.hash_real_hash = True
+            self.has_real_hash = True
 
         else:
             self.is_dir = False
@@ -105,7 +141,7 @@ class FileHash(object):
         elif S_ISREG(mode):
             self.is_dir = False
             self.is_file = True
-            self.hash_real_hash = True
+            self.has_real_hash = True
 
         else:
             self.is_dir = False
@@ -140,23 +176,6 @@ class FileHash(object):
         self.hashstr = md.hexdigest()
 
 
-    def get_name_for_uid(self):
-        uid = self.uid
-        if not uid in self.uid_to_name:
-            name = pwd.getpwuid(uid).pw_name
-            self.uid_to_name[uid] = name
-            self.name_to_uid[name]  = uid
-        return self.uid_to_name[uid]
-
-    
-    def get_name_for_gid(self):
-        gid = self.gid
-        if not gid in self.gid_to_name:
-            name = grp.getgrgid(gid).gr_name
-            self.gid_to_name[gid] = name
-            self.name_to_gid[name] = gid
-        return self.gid_to_name[gid]
-    
 
     def presentation_format(self):
         return "%s %06o %s %s %s" % (
@@ -165,18 +184,29 @@ class FileHash(object):
                        )
 
 
+    def can_compare(self, other):
+        if self.has_real_hash and other.has_real_hash:
+            return True
+        else:
+            return False
+
     def compare_contents(self, other):
-        if not self.hash_real_hash:
+        if not self.has_real_hash:
             raise NotHashableException("%s (lhs) isn't comparable" % self.fpath)
         if not other.has_real_hash:
             raise NotHashableException("%s (rhs) isn't comparable" % other.fpath)
 
+        log.debug("compare_contents: %s, %s", self, other)
         return self.hashstr == other.hashstr
 
 
     def __str__(self):
-        # XXX crap
         return self.presentation_format()
+
+
+    def __repr__(self):
+        return "[FileHash: fullpath %s fpath %s hashstr %s]" % (
+                        self.fullpath, self.fpath, self.hashstr)
 
 
 def hashlist_generate(srcpath, opts):
@@ -214,6 +244,7 @@ def hashlist_generate(srcpath, opts):
             for dirname in dirs:
                 for di in dirignore:
                     if di.search(dirname):
+                        log.info("Skipping ignore-able dir '%s'", dirname)
                         dirs.remove(dirname)
 
         # Handle directories.
@@ -225,11 +256,16 @@ def hashlist_generate(srcpath, opts):
         for filename in files:
 
             fpath = os.path.join(root, filename)
+            skipped = False
             if not opts.no_ignore_files:
                 for fi in fileignore:
                     if fi.search(fpath):
                         log.info("Skipping ignore-able file '%s'", fpath)
-                        continue
+                        skipped = True
+                        break
+
+            if skipped:
+                continue
 
             if os.path.islink(fpath):
                 log.warn("Ignoring symbolic link '%s'", fpath) # XXX is this right?
@@ -300,26 +336,31 @@ def hashlist_check(dstpath, src_hashlist, opts):
     # Now compare the two dictionaries.
 
     needed = []
-    for fpath, hsh in src_fdict.iteritems():
+
+    for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
+
         if fpath in dst_fdict:
-            if src_fdict[fpath] == dst_fdict[fpath]:
+            if src_fdict[fpath].can_compare(dst_fdict[fpath]) and \
+                src_fdict[fpath].compare_contents(dst_fdict[fpath]):
                 log.debug("%s: present and hash verified", fpath)
             else:
                 log.debug("%s: present but failed hash verify", fpath)
-                needed.append(fpath)
+                needed.append(fh)
         else:
             log.debug("%s: needed", fpath)
-            needed.append(hsh)
+            needed.append(fh)
                 
     not_needed = []
-    for fpath, hsh in dst_fdict.iteritems():
+    for fpath, fh in dst_fdict.iteritems():
         if not fpath in src_fdict:
             log.debug("%s: not found in source", fpath)
-            not_needed.append(hsh)
+            not_needed.append(fh)
         
     return (needed, not_needed)
 
 class DirWhereFileExpectedError(Exception): pass
+class NonDirFoundAtDirLocationError(Exception): pass
+class OSOperaationFailedError(Exception): pass
 class ParanoiaError(Exception): pass
 
 
@@ -327,7 +368,12 @@ def fetch_needed(needed, source, opts):
     '''
     Download/copy the necessary files from opts.source_url or opts.source_dir
     to opts.dest_dir.
+
+    This is a bit fiddly, as it tries hard to get the modes right.
     '''
+
+    r = SystemRandom()
+    mapper = UidGidMapper()
 
     if not source.endswith('/'):
         source += "/"
@@ -338,7 +384,8 @@ def fetch_needed(needed, source, opts):
         if fh.is_file:
             contents = fetch_contents(source_url, opts)
             tgt_file = os.path.join(opts.dest_dir, fh.fpath)
-            log.debug("Will write to '%s'", tgt_file)
+            tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xfffffffff)
+            log.debug("Will write to '%s'", tgt_file_rnd)
             if os.path.exists(tgt_file):
                 if os.path.islink(tgt_file):
                     raise ParanoiaError(
@@ -346,21 +393,46 @@ def fetch_needed(needed, source, opts):
                 if os.path.isdir(tgt_file):
                     raise DirWhereFileExpectedError(
                         "Directory found where file expected at '%s'", tgt_file)
-                tgt = open(tgt_file, 'wb')
-                tgt.write(contents)
-                tgt.close()
+
+            tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
+            if tgt == -1:
+                raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
+
+            if os.fchown(tgt,
+                        mapper.get_uid_for_name(fh.user),
+                        mapper.get_gid_for_name(fh.group)) == -1:
+                log.warn("Failed to fchmod '%s' to user %s group %s",
+                        tgt_file_rnd, fh.user, fh.group)
+
+            os.write(tgt, contents)
+            os.close(tgt)
+            log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
+            if os.rename(tgt_file_rnd, tgt_file) == -1:
+                raise OSOperationFailedError("Failed to rename '%s' to '%s'",
+                    tgt_file_rnd, tgt_file)
 
         elif fh.is_dir:
-            if os.path.exists(
+            tgt_dir = os.path.join(opts.dest_dir, fh.fpath)
+            log.debug("Will create or use directory '%s'", tgt_dir)
+            if os.path.exists(tgt_dir):
+                if not os.path.isdir(tgt_dir):
+                    raise NonDirFoundAtDirLocationError(
+                        "Non-directory found where we want a directory ('%s')",
+                        tgt_dir)
+            else:
+                if os.mkdir(tgt_dir, fh.mode) == -1:
+                    raise OSOperationFailedError("Failed to mkdir(%s)", tgt_dir)
+                
 
-
-def delete_not_needed(not_needed, opts):
+def delete_not_needed(not_needed, target, opts):
     '''
     Remove files from the destination that are not present on the source.
     '''
-
     for fh in not_needed:
-        log.debug("delete_not_needed: %s", fh.fpath)
+        # XXX directory delete
+        fullpath = os.path.join(target, fh.fpath)
+        log.debug("delete_not_needed: %s", fullpath)
+        os.remove(fullpath)
 
 
 def fetch_contents(fpath, opts, root='', no_trim=False):
