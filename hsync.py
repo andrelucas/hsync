@@ -340,12 +340,18 @@ def hashlist_check(dstpath, src_hashlist, opts):
     for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
 
         if fpath in dst_fdict:
-            if src_fdict[fpath].can_compare(dst_fdict[fpath]) and \
-                src_fdict[fpath].compare_contents(dst_fdict[fpath]):
-                log.debug("%s: present and hash verified", fpath)
+            if src_fdict[fpath].can_compare(dst_fdict[fpath]):
+                if src_fdict[fpath].compare_contents(dst_fdict[fpath]):
+                    log.debug("%s: present and hash verified", fpath)
+                else:
+                    log.debug("%s: present but failed hash verify", fpath)
+                    needed.append(fh)
             else:
-                log.debug("%s: present but failed hash verify", fpath)
+                # Couldn't verify contents, assume it's needed.
+                log.debug("%s: present, can't compare - assume needed", fpath)
                 needed.append(fh)
+                
+
         else:
             log.debug("%s: needed", fpath)
             needed.append(fh)
@@ -379,7 +385,7 @@ def fetch_needed(needed, source, opts):
         source += "/"
 
     for fh in needed:
-        log.debug("fetch: %s", fh.fpath)
+        log.debug("fetch_needed: %s", fh.fpath)
         source_url = urlparse.urljoin(source, fh.fpath)
         if fh.is_file:
             contents = fetch_contents(source_url, opts)
@@ -398,11 +404,15 @@ def fetch_needed(needed, source, opts):
             if tgt == -1:
                 raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
 
-            if os.fchown(tgt,
-                        mapper.get_uid_for_name(fh.user),
-                        mapper.get_gid_for_name(fh.group)) == -1:
-                log.warn("Failed to fchmod '%s' to user %s group %s",
-                        tgt_file_rnd, fh.user, fh.group)
+            expect_uid = mapper.get_uid_for_name(fh.user)
+            expect_gid = mapper.get_gid_for_name(fh.group)
+            filestat = os.stat(tgt_file_rnd)
+            if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                log.debug("Changing file %s ownership to %s/%s",
+                            tgt_file_rnd, fh.user, fh.group)
+                if os.fchown(tgt, expect_uid, expect_gid) == -1:
+                    log.warn("Failed to fchown '%s' to user %s group %s",
+                            tgt_file_rnd, fh.user, fh.group)
 
             os.write(tgt, contents)
             os.close(tgt)
@@ -413,15 +423,33 @@ def fetch_needed(needed, source, opts):
 
         elif fh.is_dir:
             tgt_dir = os.path.join(opts.dest_dir, fh.fpath)
-            log.debug("Will create or use directory '%s'", tgt_dir)
             if os.path.exists(tgt_dir):
+                log.debug("Directory '%s' found", tgt_dir)
                 if not os.path.isdir(tgt_dir):
                     raise NonDirFoundAtDirLocationError(
                         "Non-directory found where we want a directory ('%s')",
                         tgt_dir)
             else:
+                log.debug("Creating directory '%s'", tgt_dir)
                 if os.mkdir(tgt_dir, fh.mode) == -1:
                     raise OSOperationFailedError("Failed to mkdir(%s)", tgt_dir)
+
+            # Change modes and ownership.
+            expect_uid = mapper.get_uid_for_name(fh.user)
+            expect_gid = mapper.get_gid_for_name(fh.group)
+            dstat = os.stat(tgt_dir)
+            if dstat.st_uid != expect_uid or dstat.st_gid != expect_gid:
+                log.debug("Changing dir %s ownership to %s/%s",
+                            tgt_dir, fh.user, fh.group)
+                if os.fchown(tgt_dir, expect_uid, expect_gid) == -1:
+                        log.warn("Failed to fchmod '%s' to user %s group %s",
+                            tgt_dir, fh.user, fh.group)
+            if dstat.st_mode != fh.mode:
+                log.debug("Changing dir %s mode to %06o", tgt_dir, fh.mode)
+                if os.fchmod(tgt_dir, fh.mode) == -1:
+                    raise OSOperationFailedError("Failed to fchmod('%s', %06o)",
+                                                tgt_dir, fh.mode)
+                
                 
 
 def delete_not_needed(not_needed, target, opts):
