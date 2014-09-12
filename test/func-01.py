@@ -34,8 +34,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		else:
 			os.mkdir(out_tmp)
 		
-		self.assertTrue(hsync.main(['-S', in_tmp, '-t']))
-		self.assertTrue(hsync.main(['-D', out_tmp, '-u', in_tmp, '-t', '-d']))
+		self.assertTrue(hsync.main(['-S', in_tmp]))
+		self.assertTrue(hsync.main(['--no-write-hashfile', '-D', out_tmp, '-u', in_tmp, '-d']))
 
 		os.unlink(hashfile)
 		

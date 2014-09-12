@@ -17,6 +17,11 @@ import sys
 import urllib
 import urlparse
 
+class DirWhereFileExpectedError(Exception): pass
+class NonDirFoundAtDirLocationError(Exception): pass
+class OSOperaationFailedError(Exception): pass
+class ParanoiaError(Exception): pass
+
 log = logging.getLogger()
 
 fileignore = [
@@ -52,7 +57,7 @@ class UidGidMapper(object):
 
     def get_uid_for_name(self, name):
         if not name is self.name_to_uid:
-            uid = pwd.getpwnam(name).pw_uid
+            uid = int(pwd.getpwnam(name).pw_uid)
             self.name_to_uid[name] = uid
             self.uid_to_name[uid] = name
         return self.name_to_uid[name]
@@ -60,7 +65,7 @@ class UidGidMapper(object):
 
     def get_gid_for_name(self, group):
         if not group in self.name_to_gid:
-            gid = grp.getgrnam(group).gr_gid
+            gid = int(grp.getgrnam(group).gr_gid)
             self.name_to_gid[group] = gid
             self.gid_to_name[gid] = group
         return self.name_to_gid[group]
@@ -92,6 +97,8 @@ class FileHash(object):
         self.user = self.mapper.get_name_for_uid(self.uid)
         self.gid = self.stat.st_gid
         self.group = self.mapper.get_name_for_gid(self.gid)
+        self.size = self.stat.st_size
+        self.mtime = self.stat.st_mtime
 
         self.ignore = False
         self.has_real_hash = False
@@ -120,11 +127,13 @@ class FileHash(object):
     def init_from_string(cls, string, trim=False, root=''):
         self = cls()
         log.debug("ifs: %s", string)
-        (md, smode, user, group, fpath) = string.split(None, 5)
+        (md, smode, user, group, mtime, size, fpath) = string.split(None, 7)
         self.hashstr = md
         mode = self.mode = int(smode, 8)
         self.user = user
         self.group = group
+        self.mtime = mtime
+        self.size = size
         self.fpath = fpath
         opath = fpath
         if trim:
@@ -171,16 +180,18 @@ class FileHash(object):
         f = open(self.fullpath, 'rb').read() # Could read a *lot*.
         md = hashlib.sha256()
         md.update(f)
-        logging.info("Hash for %s: %s", self.fpath, md.hexdigest())
+        log.debug("Hash for %s: %s", self.fpath, md.hexdigest())
         self.contents_hash = md.digest()
         self.hashstr = md.hexdigest()
 
 
 
     def presentation_format(self):
-        return "%s %06o %s %s %s" % (
+        return "%s %06o %s %s %s %s %s" % (
                        self.hashstr, self.mode,
-                       self.user, self.group, self.fpath
+                       self.user, self.group,
+                       self.mtime, self.size,
+                       self.fpath
                        )
 
 
@@ -228,11 +239,17 @@ def hashlist_generate(srcpath, opts):
 
     '''
 
-    if not os.path.isdir(srcpath):
-        log.error("Source '%s' is not a directory", srcpath)
-        return False
+    if os.path.exists(srcpath):
+        if not os.path.isdir(srcpath):
+            raise NonDirFoundAtDirLocationError(
+                "'%s' found but is not a directory" % srcpath)
+    else:
+        os.mkdir(srcpath)
 
     hashlist = []
+
+    if opts.verbose:
+        print "Scanning"
 
     for root, dirs, files in os.walk(srcpath):
 
@@ -244,7 +261,8 @@ def hashlist_generate(srcpath, opts):
             for dirname in dirs:
                 for di in dirignore:
                     if di.search(dirname):
-                        log.info("Skipping ignore-able dir '%s'", dirname)
+                        if opts.verbose:
+                            print "Skipping ignore-able dir '%s'" % dirname
                         dirs.remove(dirname)
 
         # Handle directories.
@@ -257,7 +275,7 @@ def hashlist_generate(srcpath, opts):
 
             fpath = os.path.join(root, filename)
 
-            if fpath == opts.hash_file:
+            if filename == opts.hash_file:
                 log.debug("Skipping pre-existing hash file '%s'", opts.hash_file)
                 continue
 
@@ -265,7 +283,8 @@ def hashlist_generate(srcpath, opts):
             if not opts.no_ignore_files:
                 for fi in fileignore:
                     if fi.search(fpath):
-                        log.info("Skipping ignore-able file '%s'", fpath)
+                        if opts.verbose:
+                            print "Ignore: %s" % fpath
                         skipped = True
                         break
 
@@ -282,6 +301,21 @@ def hashlist_generate(srcpath, opts):
             hashlist.append(fh)
 
     return hashlist
+
+
+def sigfile_write(hashlist, abs_path, opts):
+
+    if opts.verbose:
+        print "Generating signature file %s" % abs_path
+
+
+    log.debug("Writing hash file '%s", abs_path)
+    sigfile = open(abs_path, 'w')
+    for fh in hashlist:
+        print >>sigfile, fh.presentation_format()
+    print >>sigfile, "FINAL: %s" % (hash_of_hashlist(hashlist))
+    sigfile.close()
+    return True
 
 
 def hash_of_hashlist(hashlist):
@@ -327,11 +361,13 @@ def hashlist_check(dstpath, src_hashlist, opts):
     '''
     Check the dstpath against the provided hashlist.
 
-    Return a tuple (needed, notneeded), where needed is a list of filepaths
-    that need to be fetched, and notneeded is a list of filepaths that are
-    not present on the target, so may be removed.
+    Return a tuple (needed, notneeded, dst_hashlist), where needed is a list
+    of filepaths that need to be fetched, and notneeded is a list of filepaths
+    that are not present on the target, so may be removed. dst_hashlist is
+    a list of FileHash objects for the destination path.
+
     '''
-    
+
     src_fdict = hashlist_to_dict(src_hashlist)
     
     # Take the simple road. Generate a hashlist for the destination.
@@ -368,12 +404,9 @@ def hashlist_check(dstpath, src_hashlist, opts):
             log.debug("%s: not found in source", fpath)
             not_needed.append(fh)
         
-    return (needed, not_needed)
+    return (needed, not_needed, dst_hashlist)
 
-class DirWhereFileExpectedError(Exception): pass
-class NonDirFoundAtDirLocationError(Exception): pass
-class OSOperaationFailedError(Exception): pass
-class ParanoiaError(Exception): pass
+
 
 
 def fetch_needed(needed, source, opts):
@@ -392,7 +425,13 @@ def fetch_needed(needed, source, opts):
         source += "/"
 
     for fh in needed:
-        log.debug("fetch_needed: %s", fh.fpath)
+        if log.isEnabledFor(logging.DEBUG):
+            if fh.is_dir:
+                log.debug("fetch_needed: dir %s", fh.fpath)
+            else:
+                log.debug("fetch_needed: %s", fh.fpath)
+
+        
         source_url = urlparse.urljoin(source, fh.fpath)
         if fh.is_file:
             contents = fetch_contents(source_url, opts)
@@ -414,12 +453,14 @@ def fetch_needed(needed, source, opts):
                     raise DirWhereFileExpectedError(
                         "Directory found where file expected at '%s'", tgt_file)
 
+            # Dealing with file descriptors, use os.f*() variants.
             tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
             if tgt == -1:
                 raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
 
             expect_uid = mapper.get_uid_for_name(fh.user)
             expect_gid = mapper.get_gid_for_name(fh.group)
+
             filestat = os.stat(tgt_file_rnd)
             if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
                 log.debug("Changing file %s ownership to %s/%s",
@@ -445,27 +486,31 @@ def fetch_needed(needed, source, opts):
                         tgt_dir)
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
-                if os.mkdir(tgt_dir, fh.mode) == -1:
-                    raise OSOperationFailedError("Failed to mkdir(%s)", tgt_dir)
+                os.mkdir(tgt_dir, fh.mode)
+
+            # Dealing with a directory on the filesystem, not an fd - use the
+            # regular os.*() variants, not the os.f*() methods.
 
             # Change modes and ownership.
             expect_uid = mapper.get_uid_for_name(fh.user)
             expect_gid = mapper.get_gid_for_name(fh.group)
+
             dstat = os.stat(tgt_dir)
             if dstat.st_uid != expect_uid or dstat.st_gid != expect_gid:
                 log.debug("Changing dir %s ownership to %s/%s",
                             tgt_dir, fh.user, fh.group)
-                if os.fchown(tgt_dir, expect_uid, expect_gid) == -1:
-                        log.warn("Failed to fchmod '%s' to user %s group %s",
-                            tgt_dir, fh.user, fh.group)
+                os.chown(tgt_dir, expect_uid, expect_gid)
+
             if dstat.st_mode != fh.mode:
                 log.debug("Changing dir %s mode to %06o", tgt_dir, fh.mode)
-                if os.fchmod(tgt_dir, fh.mode) == -1:
-                    raise OSOperationFailedError("Failed to fchmod('%s', %06o)",
-                                                tgt_dir, fh.mode)
+                os.chmod(tgt_dir, fh.mode)
+
     if errorCount == 0:
-        log.info("Fetch completed successfully")
+        if opts.verbose:
+            print "Fetch completed"
+        log.debug("Fetch completed successfully")
         return True
+
     else:
         log.warn("Fetch failed with %d errors", errorCount)
         return False           
@@ -494,7 +539,9 @@ def delete_not_needed(not_needed, target, opts):
         dirs_to_delete.sort(key=lambda x: x.fpath, reverse=True)
         for d in dirs_to_delete:
             fullpath = os.path.join(target, d.fpath)
-            log.info("Deleting directory '%s'", fullpath)
+            if opts.verbose:
+                print "Remove dir: %s\n"
+            log.debug("Deleting directory '%s'", fullpath)
             os.rmdir(fullpath)
 
     if errorCount:
@@ -535,22 +582,33 @@ def main(cmdargs):
         help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
         help="Specify the source URL")
+    recv.add_option("--no-write-hashfile", action="store_true",
+        help="Don't write a signature file after sync")
+    recv.add_option("-P", "--progress", action="store_true",
+        help="Show download progress")
     p.add_option_group(recv)
 
     meta = optparse.OptionGroup(p, "Other options")
+    meta.add_option("-V", "--verify-only", action="store_true",
+        help="Verify only, do not transfer or delete files")
     meta.add_option("--hash-file", default="HSYNC.SIG",
         help="Specify the hash filename [default: %default]")
     meta.add_option("--no-ignore-dirs", action="store_true",
         help="Don't trim common dirs such as .git, .svn and CVS")
     meta.add_option("--no-ignore-files", action="store_true",
         help="Don't trim common ignore-able files such as *~ and *.swp")
-    meta.add_option("-t", "--trim-path", action="store_true",
-        help="Trim the top-level path from output filenames")
-    meta.add_option("-v", "--verbose", action="store_true",
-        help="Enable verbose output")
-    meta.add_option("-d", "--debug", action="store_true",
-        help="Enable debugging output")
+    meta.add_option("--no-trim-path", action="store_false",
+        default=True, dest='trim_path',
+        help="Don't trim the top-level path from filenames [default: "
+                "%default]. You probably don't want to do this.")
     p.add_option_group(meta)
+
+    output = optparse.OptionGroup(p, "Output options")
+    output.add_option("-v", "--verbose", action="store_true",
+        help="Enable verbose output")
+    output.add_option("-d", "--debug", action="store_true",
+        help="Enable debugging output")
+    p.add_option_group(output)
 
     (opt, args) = p.parse_args(args=cmdargs)
 
@@ -559,6 +617,8 @@ def main(cmdargs):
         level = logging.INFO
     if opt.debug:
         level = logging.DEBUG
+        opt.verbose = True
+
     logging.basicConfig(level=level)
     log = logging.getLogger()
 
@@ -578,12 +638,12 @@ def main(cmdargs):
 
         hashlist = hashlist_generate(opt.source_dir, opt)
         if hashlist is not None:
-            sigfilename = os.path.join(opt.source_dir, opt.hash_file)
-            sigfile = open(sigfilename, 'w')
-            for fh in hashlist:
-                print >>sigfile, fh.presentation_format()
-            print >>sigfile, "FINAL: %s" % (hash_of_hashlist(hashlist))
-            sigfile.close()
+            abs_hashfile = os.path.join(opt.source_dir, opt.hash_file)
+            if not sigfile_write(hashlist, abs_hashfile, opt):
+                log.error("Failed to write signature file '%s'",
+                    os.path.join(opt.source_dir, opt.hash_file))
+                return False
+            
             return True
 
         else:
@@ -600,12 +660,32 @@ def main(cmdargs):
         strfile = fetch_contents(hashurl, opt).splitlines()
 
         src_hashlist = hashlist_from_stringlist(strfile, opt)
-        (needed, not_needed) = hashlist_check(opt.dest_dir, src_hashlist, opt)
+        (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
+                                                        src_hashlist, opt)
 
-        # XXX error handling
-        fetch_needed(needed, opt.source_url, opt)
-        delete_not_needed(not_needed, opt.dest_dir, opt)
-        return True
+        if opt.verify_only:
+            # Give a report if we're verbose.
+            if opt.verbose:
+                for fh in fetch_needed:
+                    print "Needed: %s" % fh.fpath
+                for fh in delete_not_needed:
+                    print "Needs delete: %s" % fh.path
+            return True
+        
+        else:
+            if (not fetch_needed(needed, opt.source_url, opt) or 
+                not delete_not_needed(not_needed, opt.dest_dir, opt)):
+                log.error("Sync failed")
+                return False
+
+            if not opt.no_write_hashfile and dst_hashlist is not None:
+                abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
+                if not sigfile_write(dst_hashlist, abs_hashfile, opt):
+                    log.error("Failed to write signature file '%s'",
+                                os.path.join(opt.source_dir, opt.hash_file))
+                return False
+
+            return True
 
     
 if __name__ == '__main__':
