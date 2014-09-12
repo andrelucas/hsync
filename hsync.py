@@ -475,11 +475,34 @@ def delete_not_needed(not_needed, target, opts):
     '''
     Remove files from the destination that are not present on the source.
     '''
+    dirs_to_delete = []
+    errorCount = 0
+
     for fh in not_needed:
-        # XXX directory delete
-        fullpath = os.path.join(target, fh.fpath)
-        log.debug("delete_not_needed: %s", fullpath)
-        os.remove(fullpath)
+        if fh.is_dir:
+            log.debug("Saving dir '%s' for later deletion")
+            dirs_to_delete.append(fh)
+
+        else:
+            fullpath = os.path.join(target, fh.fpath)
+            log.debug("delete_not_needed: %s", fullpath)
+            os.remove(fullpath)
+
+    if dirs_to_delete:
+        # Sort the delete list by filename, then reverse so it's depth-
+        # first.
+        dirs_to_delete.sort(key=lambda x: x.fpath, reverse=True)
+        for d in dirs_to_delete:
+            fullpath = os.path.join(target, d.fpath)
+            log.info("Deleting directory '%s'", fullpath)
+            os.rmdir(fullpath)
+
+    if errorCount:
+        log.warn("Delete failed with %d errors", errorCount)
+        return False
+
+    return True
+
 
 
 def fetch_contents(fpath, opts, root='', no_trim=False):
