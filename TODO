@@ -1,0 +1,6 @@
+TODO for hsync
+==============
+
+- Verify mode. Return shell error unless target agrees exactly with source.
+- Missing file type handling: Socket, device.
+- Add storage of file size and timestamp.
