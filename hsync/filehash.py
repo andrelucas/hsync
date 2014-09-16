@@ -89,15 +89,7 @@ class FileHash(object):
             self.link_normalised = False
 
             if root:
-                self.link_normalised = True
-                self.link_relpath = \
-                    self.source_symlink_make_relative(self, root)
-
-                if self.self.link_relpath.startswith(os.sep):
-                    log.warn("'%s' (symlink to '%s') points outside the tree",
-                             self.fpath, self.link_target)
-                    self.link_is_external = True
-
+                self.normalise_symlink(root)
 
         elif S_ISREG(mode):
             self.is_file = True
@@ -173,6 +165,8 @@ class FileHash(object):
             self.hashstr = self.blankhash[:]
             # For the same reason again, we just create links.
             self.copy_by_creation = True
+            if root:
+                self.normalise_symlink(root)
 
         elif S_ISREG(mode):
             self.is_file = True
@@ -300,6 +294,29 @@ class FileHash(object):
         return True
 
 
+    def normalise_symlink(self, root):
+        '''
+        Given a root directory, make symlinks that point inside our tree
+        relative, and mark links that point outside the tree as external.
+        '''
+        if not S_ISLNK(self.mode):
+            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
+                                                self.fpath)
+        log.debug("normalise_symlink: %s", repr(self))
+
+        self.link_normalised = True
+        self.link_relpath = self.source_symlink_make_relative(srcdir=root)
+
+        if self.link_relpath.startswith(os.sep):
+            log.warn("'%s' (symlink to '%s') points outside the tree - "
+                        "normalising to '%s'",
+                        self.fpath, self.link_target, self.link_relpath)
+            self.link_target = self.link_relpath
+            self.link_is_external = True
+        else:
+            self.link_is_external = False
+
+
     def source_symlink_make_relative(self, srcdir, absolute_is_error=False):
         '''
         On the source side, find if a symlink is under srcdir, and
@@ -332,19 +349,19 @@ class FileHash(object):
 
         tpath = self.link_target
         norm_tpath = os.path.normpath(tpath)
-        log.debug("XXX tpath '%s' norm_tpath '%s'", tpath, norm_tpath)
+        # log.debug("XXX tpath '%s' norm_tpath '%s'", tpath, norm_tpath)
 
         spath_full = os.path.join(topdir, self.fpath)
         norm_spath_full = os.path.normpath(spath_full)
-        log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full, norm_spath_full)
+        # log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full, norm_spath_full)
 
         norm_lpath_full = os.path.dirname(norm_spath_full)
-        log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
+        # log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
         # This is the location of the symlink (dirname fpath) plus the link
         # target.
         tpath_full = os.path.join(topdir, norm_lpath_full, self.link_target)
         norm_tpath_full = os.path.normpath(tpath_full)
-        log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full, norm_tpath_full)
+        # log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full, norm_tpath_full)
 
         if norm_tpath_full.startswith(topdir):
             # We're under the source path -> relative link.
@@ -370,9 +387,13 @@ class FileHash(object):
 
 
     def __repr__(self):
+        if self.is_link:
+            fpath = '%s>>>%s' % (self.fpath, self.link_target)
+        else:
+            fpath = self.fpath
         return "[FileHash: fullpath %s fpath %s size %d " \
                 "mode %06o uid %d gid %d hashstr %s]" % (
-                        self.fullpath, self.fpath,
+                        self.fullpath, fpath,
                         self.size, self.mode,
                         self.uid, self.gid, self.hashstr)
 

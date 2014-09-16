@@ -37,7 +37,7 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 		self.tmp = tmp
 
 		(ldir, lfile) = os.path.split(link)
-		log.debug("XXX ldir %s lfile %s", ldir, lfile)
+		log.debug("ldir %s lfile %s", ldir, lfile)
 
 		shutil.rmtree(tmp, True)
 		os.makedirs(tmp)
@@ -50,24 +50,28 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 		os.symlink(tgt, os.path.join(self.tmp, link))
 
 		linkstr = self.linkbase + '%s/%s>>> %s' % (ldir, lfile, tgt)
-		fh = FileHash.init_from_string(linkstr)
+		fh = FileHash.init_from_string(linkstr, trim=True, root=self.tmp)
 		
 		self.assertIsInstance(fh, FileHash, "Can create link FileHash")
 		norm_tpath = fh.source_symlink_make_relative(self.tmp,
 												absolute_is_error=absfail)
 		if check:
 			self.assertEqual(norm_tpath, tgt)
-		return norm_tpath
+		return (fh, norm_tpath)
 
 
-	def test_symlink_norm_up_l0(self):
+	def test_symlink_relative_up(self):
+		'''In-tree symlinks relative simple'''
 		link = os.path.join(self.tdir, 'link')
-		self._symlink_norm(link, 'target', absfail=True)
-		self._symlink_norm(link, '../target', absfail=True)
-		self._symlink_norm(link, '../../target', absfail=True)
-		self._symlink_norm(link, '../../../target', absfail=True)
+		for tgt in ('target', '../target', '../../target',
+						'../../../target'):
 
-	def test_symlink_norm_up_l4_fail(self):
+			(fh, np) = self._symlink_norm(link, tgt, absfail=True)
+			self.assertFalse(fh.link_is_external, "External flag not set")
+			self.assertEqual(tgt, fh.link_target, "Object link target set")
+
+
+	def test_symlink_norm_up_l4_throw(self):
 		'''Link points up one directory too many, don't allow'''
 		with self.assertRaises(SymlinkPointsOutsideTreeError):
 			self._symlink_norm('link', '../../../../target', absfail=True)
@@ -76,16 +80,23 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 	def test_symlink_norm_up_l4_abs(self):
 		'''Link points up one directory too many, abs link results'''
 		link = os.path.join(self.tdir, 'link')
-		abslink = self._symlink_norm(link, '../../../../target', check=False)
+		(fh, norm_tpath) = self._symlink_norm(link, '../../../../target',
+												check=False)
 		# It will point to topdir, not self.tmp which is a subdir of topdir.
 		# That's the point.
-		self.assertEqual(abslink, os.path.join(self.topdir, 'target'),
+		self.assertEqual(norm_tpath, os.path.join(self.topdir, 'target'),
 						"Absolute link is correct")
+		self.assertTrue(fh.link_is_external, "External flag is set properly")
+		fh.normalise_symlink(self.topdir)
+		self.assertEqual(fh.link_target, os.path.join(self.topdir, 'target'),
+							"Object link is correct")
 
 
 	def test_symlink_norm_inside(self):
-		norm = self._symlink_norm('source/link', 'source/d1/d1.2/target', absfail=True)
-		self._symlink_norm('source/link', 'source/d1/target', absfail=True)			
-		self._symlink_norm('source/link', 'source/target', absfail=True)
-		self._symlink_norm('source/link', 'target', absfail=True)
+		'''In-tree symlinks relative 2'''
+		for tgt in ('source/d1/d1.2/target', 'source/d1/target',
+					'source/target', 'target'):
+			(fh, np) = self._symlink_norm('source/link', tgt, absfail=True)
+			self.assertEqual(np, tgt, "Link stays inbound")
+			self.assertEqual(tgt, fh.link_target, "Object link target set")
 
