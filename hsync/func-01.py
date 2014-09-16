@@ -13,7 +13,7 @@ import hsync
 class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	me = inspect.getfile(inspect.currentframe())
-	topdir = os.path.dirname(me)
+	topdir = os.path.join(os.path.dirname(me), 'test')
 
 	def rundiff(self, in_dir, out_dir=None, delete=True,
 				src_optlist=None, dst_optlist=None):
@@ -142,7 +142,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 
 	def test_local_verify3_modes(self):
-		'''Mode change verify'''
+		'''Mode change verify and toggle'''
 		def change_f1_2(out_tmp):
 			'''Mode change'''
 			os.chmod(os.path.join(out_tmp, 'f1'), 0755)
