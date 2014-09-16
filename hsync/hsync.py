@@ -3,6 +3,7 @@
 # Simple sync-in-the-clear tool. Use SHA* and http to sync two
 # directories using only HTTP GET.
 
+from __future__ import print_function
 
 import grp
 import hashlib
@@ -55,9 +56,9 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
     if opts.verbose:
         if source_mode:
-            print "Scanning filesystem"
+            print("Scanning filesystem")
         else:
-            print "Comparing filesystem"
+            print("Comparing filesystem")
 
 
     for root, dirs, files in os.walk(srcpath):
@@ -71,7 +72,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
                 for di in dirignore:
                     if di.search(dirname):
                         if source_mode and opts.verbose:
-                            print "Skipping ignore-able dir '%s'" % dirname
+                            print("Skipping ignore-able dir '%s'" % dirname)
                         dirs.remove(dirname)
 
         # Handle directories.
@@ -79,7 +80,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
             fpath = os.path.join(root, dirname)
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
             if source_mode and opts.verbose:
-                print "Add dir:  %s" % fpath
+                print("Add dir:  %s" % fpath)
             hashlist.append(fh)
             
         for filename in files:
@@ -95,7 +96,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
                 for fi in fileignore:
                     if fi.search(fpath):
                         if source_mode and opts.verbose:
-                            print "Ignore:  %s" % fpath
+                            print("Ignore:  %s" % fpath)
                         skipped = True
                         break
 
@@ -108,7 +109,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
             log.debug("Add file: %s", fpath)
             if source_mode and opts.verbose:
-                print "Add file: %s" % fpath
+                print("Add file: %s" % fpath)
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
 
             hashlist.append(fh)
@@ -119,14 +120,14 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 def sigfile_write(hashlist, abs_path, opts):
 
     if opts.verbose:
-        print "Generating signature file %s" % abs_path
+        print("Generating signature file %s" % abs_path)
 
 
     log.debug("Writing hash file '%s", abs_path)
     sigfile = open(abs_path, 'w')
     for fh in hashlist:
-        print >>sigfile, fh.presentation_format()
-    print >>sigfile, "FINAL: %s" % (hash_of_hashlist(hashlist))
+        print(fh.presentation_format(), file=sigfile)
+    print("FINAL: %s" % (hash_of_hashlist(hashlist)), file=sigfile)
     sigfile.close()
     return True
 
@@ -257,7 +258,7 @@ def fetch_needed(needed, source, opts):
         source_url = urlparse.urljoin(source, fh.fpath)
         if fh.is_file:
             if opts.verbose:
-                print "Get file: %s" % fh.fpath
+                print("Get file: %s" % fh.fpath)
             contents = fetch_contents(source_url, opts)
             chk = hashlib.sha256()
             chk.update(contents)
@@ -311,7 +312,7 @@ def fetch_needed(needed, source, opts):
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
                 if opts.verbose:
-                    print "Make dir: %s" % fh.fpath
+                    print("Make dir: %s" % fh.fpath)
                 os.mkdir(tgt_dir, fh.mode)
 
             # Dealing with a directory on the filesystem, not an fd - use the
@@ -333,7 +334,7 @@ def fetch_needed(needed, source, opts):
 
     if errorCount == 0:
         if opts.verbose:
-            print "Fetch completed"
+            print("Fetch completed")
         log.debug("Fetch completed successfully")
         return True
 
@@ -366,7 +367,7 @@ def delete_not_needed(not_needed, target, opts):
         for d in dirs_to_delete:
             fullpath = os.path.join(target, d.fpath)
             if opts.verbose:
-                print "Remove dir: %s\n"
+                print("Remove dir: %s\n", d.fpath)
             log.debug("Deleting directory '%s'", fullpath)
             os.rmdir(fullpath)
 
@@ -499,9 +500,9 @@ def main(cmdargs):
             # Give a report if we're verbose.
             if opt.verbose:
                 for fh in needed:
-                    print "Needed: %s" % fh.fpath
+                    print("Needed: %s" % fh.fpath)
                 for fh in not_needed:
-                    print "Needs delete: %s" % fh.path
+                    print("Needs delete: %s" % fh.path)
 
             if needed or not_needed:
                 return False
