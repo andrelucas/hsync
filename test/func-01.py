@@ -15,7 +15,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 	me = inspect.getfile(inspect.currentframe())
 	topdir = os.path.dirname(me)
 
-	def rundiff(self, in_dir, out_dir=None, delete=True):
+	def rundiff(self, in_dir, out_dir=None, delete=True,
+				src_optlist=None, dst_optlist=None):
 		'''
 		Set up copies of an existing tree (or existing trees), run hsync
 		and report on any differences.
@@ -23,6 +24,10 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		If delete is True, remove the temporary output directories.
 		Otherwise, return (in_tmp, out_tmp), probably for further
 		comparison.
+
+		src_optlist and dst_optlist are optional lists of additional options
+		to pass to the -S and -D commands respectively.
+
 		'''
 
 		in_tmp = os.path.join(self.topdir, 'in_tmp')
@@ -38,8 +43,15 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		else:
 			os.mkdir(out_tmp)
 		
-		self.assertTrue(hsync.main(['-S', in_tmp]))
-		self.assertTrue(hsync.main(['--no-write-hashfile', '-D', out_tmp, '-u', in_tmp, '-d']))
+		srcopt = ['-S', in_tmp]
+		if src_optlist is not None:
+			srcopt.extend(src_optlist)
+		self.assertTrue(hsync.main(srcopt))
+
+		dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_tmp, '-d']
+		if dst_optlist is not None:
+			dstopt.extend(dst_optlist)
+		self.assertTrue(hsync.main(dstopt))
 
 		#os.unlink(hashfile)
 		
@@ -53,18 +65,24 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			return (in_tmp, out_tmp)
 
 
-	def runverify(self, in_dir, out_dir=None, munge_output=None):
+	def runverify(self, in_dir, out_dir=None, munge_output=None,
+					src_optlist=None, dst_optlist=None, vfy_optlist=None):
 		'''
 		Run hsync, optionally change something, then run the verifier.
 		'''
 
-		(in_tmp, out_tmp) = self.rundiff(in_dir, out_dir, delete=False)
+		(in_tmp, out_tmp) = self.rundiff(in_dir, out_dir, delete=False,
+											src_optlist=src_optlist,
+											dst_optlist=dst_optlist)
 		hashfile = os.path.join(self.topdir, in_tmp, 'HSYNC.SIG')
 
 		if munge_output is not None:
 			munge_output(out_tmp)
 
-		ret = hsync.main(['--verify-only', '-D', out_tmp, '-u', in_tmp, '-d'])
+		vfyopt = ['--verify-only', '-D', out_tmp, '-u', in_tmp, '-d']
+		if vfy_optlist is not None:
+			vfyopt.extend(vfy_optlist)
+		ret = hsync.main(vfyopt)
 
 		shutil.rmtree(in_tmp)
 		shutil.rmtree(out_tmp)
@@ -112,7 +130,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 
 	def test_local_verify2(self):
-		'''Less obvious verify fail'''
+		'''Trivial contents change verify fail'''
 		def change_f1_1(out_tmp):
 			'''Contents change'''
 			fh = open(os.path.join(out_tmp, 'f1'), 'w')
@@ -122,11 +140,18 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		self.assertFalse(self.runverify('t_verify3_in', None,
 										munge_output=change_f1_1))
 
+
 	def test_local_verify3_modes(self):
-		'''Check modes'''
+		'''Mode change verify'''
 		def change_f1_2(out_tmp):
 			'''Mode change'''
 			os.chmod(os.path.join(out_tmp, 'f1'), 0755)
 		# Should fail.
 		self.assertFalse(self.runverify('t_verify4_in', None,
 										munge_output=change_f1_2))
+		# Should succeed.
+		self.assertTrue(self.runverify('t_verify4_in', None,
+										vfy_optlist=['--ignore-mode'],
+										munge_output=change_f1_2))
+
+

@@ -102,6 +102,7 @@ class FileHash(object):
 
         self.copy_by_creation = False
         self.copy_by_copying = False
+        self.size_comparison_valid = False
 
         self.ignore = False
         self.has_real_hash = False
@@ -118,6 +119,7 @@ class FileHash(object):
             self.hash_file()
             self.copy_by_copying = True
             self.has_real_hash = True
+            self.size_comparison_valid = False
 
         else:
             self.is_dir = False
@@ -136,14 +138,20 @@ class FileHash(object):
         self.hashstr = md
         mode = self.mode = int(smode, 8)
         self.user = user
+        self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
+        self.gid = self.mapper.get_gid_for_name(group)
         self.mtime = mtime
-        self.size = size
+        self.size = int(size) # XXX int length?
         self.fpath = fpath
         opath = fpath
         if trim:
             opath = os.path.join(root, opath)
         self.fullpath = opath
+
+        self.copy_by_creation = False
+        self.copy_by_copying = False
+        self.size_comparison_valid = False
 
         self.ignore = False
         self.has_real_hash = False
@@ -151,11 +159,14 @@ class FileHash(object):
         if S_ISDIR(mode):
             self.is_file = False
             self.is_dir = True
+            self.copy_by_creation = True
 
         elif S_ISREG(mode):
             self.is_dir = False
             self.is_file = True
             self.has_real_hash = True
+            self.copy_by_copying = True
+            self.size_comparison_valid = True
 
         else:
             self.is_dir = False
@@ -222,7 +233,11 @@ class FileHash(object):
         Thorough object identity check. Return True if files are the same,
         otherwise False.
         '''
-        if self.size != other.size:
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("compare: self %s other %s", repr(self), repr(other))
+
+        if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
             return False
 
@@ -255,8 +270,11 @@ class FileHash(object):
 
 
     def __repr__(self):
-        return "[FileHash: fullpath %s fpath %s hashstr %s]" % (
-                        self.fullpath, self.fpath, self.hashstr)
+        return "[FileHash: fullpath %s fpath %s size %d " \
+                "mode %06o uid %d gid %d hashstr %s]" % (
+                        self.fullpath, self.fpath,
+                        self.size, self.mode,
+                        self.uid, self.gid, self.hashstr)
 
 
 def hashlist_generate(srcpath, opts, source_mode=True):
@@ -429,20 +447,24 @@ def hashlist_check(dstpath, src_hashlist, opts):
 
         if fpath in dst_fdict:
 
-            if src_fdict[fpath].can_compare(dst_fdict[fpath]):
-                if src_fdict[fpath].compare_contents(dst_fdict[fpath]):
-                    log.debug("%s: present and hash verified", fpath)
-                else:
-                    log.debug("%s: present but failed hash verify", fpath)
-                    if opts.verify_only:
-                        print "%s failed contents verification" % fpath
-                    fh.verification_failed = True
-                    needed.append(fh)
+            # if src_fdict[fpath].can_compare(dst_fdict[fpath]):
+            #     if src_fdict[fpath].compare_contents(dst_fdict[fpath]):
+            #         log.debug("%s: present and hash verified", fpath)
+            #     else:
+            #         log.debug("%s: present but failed hash verify", fpath)
+            #         if opts.verify_only:
+            #             print "%s failed contents verification" % fpath
+            #         fh.verification_failed = True
+            #         needed.append(fh)
 
-            else:
-                # Couldn't verify contents, assume it's needed.
-                log.debug("%s: present, can't compare - assume needed", fpath)
+            # else:
+            #     # Couldn't verify contents, assume it's needed.
+            #     log.debug("%s: present, can't compare - assume needed", fpath)
 
+            #     needed.append(fh)
+            if not src_fdict[fpath].compare(dst_fdict[fpath],
+                                            ignore_mode=opts.ignore_mode):
+                log.debug("%s: needed", fpath)
                 needed.append(fh)
                 
 
@@ -642,6 +664,8 @@ def main(cmdargs):
         help="Don't write a signature file after sync")
     recv.add_option("-P", "--progress", action="store_true",
         help="Show download progress")
+    recv.add_option("--ignore-mode", action="store_true",
+        help="Ignore differences in file modes")
     p.add_option_group(recv)
 
     meta = optparse.OptionGroup(p, "Other options")
@@ -677,6 +701,10 @@ def main(cmdargs):
 
     logging.basicConfig(level=level)
     log = logging.getLogger()
+
+    # As soon as logging is configured, say what we're doing.
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("main: args %s", cmdargs)
 
     if opt.source_dir and opt.dest_dir:
         log.error("Send-side and receive-side options can't be mixed")
