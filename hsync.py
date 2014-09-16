@@ -100,18 +100,23 @@ class FileHash(object):
         self.size = self.stat.st_size
         self.mtime = self.stat.st_mtime
 
+        self.copy_by_creation = False
+        self.copy_by_copying = False
+
         self.ignore = False
         self.has_real_hash = False
 
         if S_ISDIR(mode):
             self.is_file = False
             self.is_dir = True
+            self.copy_by_creation = True
             self.hashstr = self.blankhash[:]
 
         elif S_ISREG(mode):
             self.is_dir = False
             self.is_file = True
             self.hash_file()
+            self.copy_by_copying = True
             self.has_real_hash = True
 
         else:
@@ -200,6 +205,7 @@ class FileHash(object):
             return True
         else:
             return False
+            
 
     def compare_contents(self, other):
         if not self.has_real_hash:
@@ -211,6 +217,39 @@ class FileHash(object):
         return self.hashstr == other.hashstr
 
 
+    def compare(self, other, ignore_uid_gid=False, ignore_mode=False):
+        '''
+        Thorough object identity check. Return True if files are the same,
+        otherwise False.
+        '''
+        if self.size != other.size:
+            log.debug("Object sizes differ")
+            return False
+
+        if not ignore_mode:
+            if self.mode != other.mode:
+                log.debug("Object modes differ")
+                return False
+
+        if not ignore_uid_gid:
+            if self.uid != other.uid:
+                log.debug("Object UIDs differ")
+                return False
+            if self.gid != other.gid:
+                log.debug("Object GIDs differ")
+                return False
+
+        if self.can_compare(other):
+            if not self.compare_contents(other):
+                log.debug("Hash verification failed")
+                return False
+            else:
+                log.debug("Hash verified")
+
+        log.debug("Identity check pass")
+        return True
+
+
     def __str__(self):
         return self.presentation_format()
 
@@ -220,7 +259,7 @@ class FileHash(object):
                         self.fullpath, self.fpath, self.hashstr)
 
 
-def hashlist_generate(srcpath, opts):
+def hashlist_generate(srcpath, opts, source_mode=True):
     '''
     Generate the haslist for the given path.
 
@@ -249,7 +288,11 @@ def hashlist_generate(srcpath, opts):
     hashlist = []
 
     if opts.verbose:
-        print "Scanning"
+        if source_mode:
+            print "Scanning filesystem"
+        else:
+            print "Comparing filesystem"
+
 
     for root, dirs, files in os.walk(srcpath):
 
@@ -261,7 +304,7 @@ def hashlist_generate(srcpath, opts):
             for dirname in dirs:
                 for di in dirignore:
                     if di.search(dirname):
-                        if opts.verbose:
+                        if source_mode and opts.verbose:
                             print "Skipping ignore-able dir '%s'" % dirname
                         dirs.remove(dirname)
 
@@ -269,6 +312,8 @@ def hashlist_generate(srcpath, opts):
         for dirname in dirs:
             fpath = os.path.join(root, dirname)
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
+            if source_mode and opts.verbose:
+                print "Add dir:  %s" % fpath
             hashlist.append(fh)
             
         for filename in files:
@@ -283,8 +328,8 @@ def hashlist_generate(srcpath, opts):
             if not opts.no_ignore_files:
                 for fi in fileignore:
                     if fi.search(fpath):
-                        if opts.verbose:
-                            print "Ignore: %s" % fpath
+                        if source_mode and opts.verbose:
+                            print "Ignore:  %s" % fpath
                         skipped = True
                         break
 
@@ -295,7 +340,9 @@ def hashlist_generate(srcpath, opts):
                 log.warn("Ignoring symbolic link '%s'", fpath) # XXX is this right?
                 continue
 
-            log.debug("File: %s", fpath)
+            log.debug("Add file: %s", fpath)
+            if source_mode and opts.verbose:
+                print "Add file: %s" % fpath
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
 
             hashlist.append(fh)
@@ -371,7 +418,7 @@ def hashlist_check(dstpath, src_hashlist, opts):
     src_fdict = hashlist_to_dict(src_hashlist)
     
     # Take the simple road. Generate a hashlist for the destination.
-    dst_hashlist = hashlist_generate(dstpath, opts)
+    dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False)
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
     # Now compare the two dictionaries.
@@ -387,10 +434,15 @@ def hashlist_check(dstpath, src_hashlist, opts):
                     log.debug("%s: present and hash verified", fpath)
                 else:
                     log.debug("%s: present but failed hash verify", fpath)
+                    if opts.verify_only:
+                        print "%s failed contents verification" % fpath
+                    fh.verification_failed = True
                     needed.append(fh)
+
             else:
                 # Couldn't verify contents, assume it's needed.
                 log.debug("%s: present, can't compare - assume needed", fpath)
+
                 needed.append(fh)
                 
 
@@ -434,6 +486,8 @@ def fetch_needed(needed, source, opts):
         
         source_url = urlparse.urljoin(source, fh.fpath)
         if fh.is_file:
+            if opts.verbose:
+                print "Get file: %s" % fh.fpath
             contents = fetch_contents(source_url, opts)
             chk = hashlib.sha256()
             chk.update(contents)
@@ -486,6 +540,8 @@ def fetch_needed(needed, source, opts):
                         tgt_dir)
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
+                if opts.verbose:
+                    print "Make dir: %s" % fh.fpath
                 os.mkdir(tgt_dir, fh.mode)
 
             # Dealing with a directory on the filesystem, not an fd - use the
@@ -666,11 +722,16 @@ def main(cmdargs):
         if opt.verify_only:
             # Give a report if we're verbose.
             if opt.verbose:
-                for fh in fetch_needed:
+                for fh in needed:
                     print "Needed: %s" % fh.fpath
-                for fh in delete_not_needed:
+                for fh in not_needed:
                     print "Needs delete: %s" % fh.path
-            return True
+
+            if needed or not_needed:
+                return False
+            else:
+                # True ('verified') means 'nothing to do'.
+                return True
         
         else:
             if (not fetch_needed(needed, opt.source_url, opt) or 
