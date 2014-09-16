@@ -87,7 +87,7 @@ class FileHash(object):
             # For the same reason, the hash is meaningless.
             self.hashstr = self.blankhash[:]
             self.link_normalised = False
-            
+
             if root:
                 self.link_normalised = True
                 self.link_relpath = \
@@ -298,61 +298,6 @@ class FileHash(object):
 
         log.debug("Identity check pass")
         return True
-
-
-    def compare_link(self, selfpath, other, otherpath):
-        '''
-        Symlink compare is a little trickier. We need the paths in which our
-        links are embedded in order to compare their targets.
-        '''
-
-        us = localise_link_target(self, selfpath)
-        them = localise_link_target(other, otherpath)
-        log.debug("compare_link: us '%s' them '%s'", us, them)
-        return us == them
-
-
-    def link_target_inside(self, selfpath):
-        '''
-        Return True if our symlink target is inside selfpath, False if not.
-
-        Throws an exception for non-symlinks.
-        '''
-        if not S_ISLNK(self.mode):
-            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
-                                                self.fpath)
-        norm_topdir = os.path.normpath(selfpath)
-        if not norm_topdir.endswith(os.sep):
-            norm_topdir += os.sep
-
-        norm_link_tgt = os.path.normpath(self.link_target)
-        return norm_link_tgt.startswith(norm_topdir)        
-
-
-    def localise_link_target(self, selfpath):
-        '''
-        Return our link target relative to selfpath. If we're under selfpath,
-        strip selfpath. Otherwise, return the whole path.
-
-        Will throw an Error if we're not a symlink.
-        '''
-        if not S_ISLNK(self.mode):
-            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
-                                                self.fpath)
-        # log.debug("localise_link_target: '%s' selfpath '%s'",
-        #             self.link_target, selfpath)
-
-        topdir = selfpath
-        if not topdir.endswith(os.sep):
-            topdir += os.sep
-
-        if self.link_target_inside(topdir):
-            tpath = self.link_target[len(topdir):]
-            log.debug("Normalise: %s -> %s (topdir %s)",
-                        self.link_target, tpath, topdir)
-            return tpath
-        else:
-            return self.link_target
 
 
     def source_symlink_make_relative(self, srcdir, absolute_is_error=False):
