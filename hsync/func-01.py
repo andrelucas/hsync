@@ -38,8 +38,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		shutil.rmtree(out_tmp, True)
 
 		shutil.copytree(os.path.join(self.topdir, in_dir), in_tmp)
+		subprocess.check_call(['find', in_tmp, '-name', '.gitignore',
+								'-exec', 'rm', '{}', ';'])
 		if out_dir is not None:
 			shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp)
+			subprocess.check_call(['find', out_tmp, '-name', '.gitignore',
+									'-exec', 'rm', '{}', ';'])
 		else:
 			os.mkdir(out_tmp)
 		
