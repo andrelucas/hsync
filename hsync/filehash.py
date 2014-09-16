@@ -15,6 +15,8 @@ from exceptions import *
 class NotHashableException(Exception): pass
 class UnsupportedFileTypeException(Exception): pass
 class LinkOperationOnNonLinkError(Exception): pass
+class PathMustBeAbsoluteError(Exception): pass
+class SymlinkPointsOutsideTreeError(Exception): pass
 
 class HashStringFormatError(Exception): pass
 class BadSymlinkFormatError(HashStringFormatError): pass
@@ -84,6 +86,18 @@ class FileHash(object):
             self.has_real_hash = False
             # For the same reason, the hash is meaningless.
             self.hashstr = self.blankhash[:]
+            self.link_normalised = False
+            
+            if root:
+                self.link_normalised = True
+                self.link_relpath = \
+                    self.source_symlink_make_relative(self, root)
+
+                if self.self.link_relpath.startswith(os.sep):
+                    log.warn("'%s' (symlink to '%s') points outside the tree",
+                             self.fpath, self.link_target)
+                    self.link_is_external = True
+
 
         elif S_ISREG(mode):
             self.is_file = True
@@ -108,7 +122,7 @@ class FileHash(object):
     def init_from_string(cls, string, trim=False, root=''):
         self = cls()
         log.debug("init_from_string: %s", string)
-        (md, smode, user, group, mtime, size, fpath) = string.split(None, 7)
+        (md, smode, user, group, mtime, size, fpath) = string.split(None, 6)
         self.hashstr = md
         mode = self.mode = int(smode, 8)
         self.user = user
@@ -144,7 +158,7 @@ class FileHash(object):
             if not '>>>' in fpath:
                 raise BadSymlinkFormatError(
                     "%s: Expected '>>>' in symlink hash" % fpath)
-            (link,target) = fpath.split('>>>', 2)
+            (link,target) = fpath.split('>>>', 1)
             if not link or not target:
                 raise BadSymlinkFormatError(
                     "%s: Bogus symlink hash" % fpath)
@@ -298,12 +312,29 @@ class FileHash(object):
         return us == them
 
 
+    def link_target_inside(self, selfpath):
+        '''
+        Return True if our symlink target is inside selfpath, False if not.
+
+        Throws an exception for non-symlinks.
+        '''
+        if not S_ISLNK(self.mode):
+            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
+                                                self.fpath)
+        norm_topdir = os.path.normpath(selfpath)
+        if not norm_topdir.endswith(os.sep):
+            norm_topdir += os.sep
+
+        norm_link_tgt = os.path.normpath(self.link_target)
+        return norm_link_tgt.startswith(norm_topdir)        
+
+
     def localise_link_target(self, selfpath):
         '''
         Return our link target relative to selfpath. If we're under selfpath,
         strip selfpath. Otherwise, return the whole path.
 
-        Will throw an exception if we're not a symlink.
+        Will throw an Error if we're not a symlink.
         '''
         if not S_ISLNK(self.mode):
             raise LinkOperationOnNonLinkError("'%s' is not a symlink",
@@ -315,7 +346,7 @@ class FileHash(object):
         if not topdir.endswith(os.sep):
             topdir += os.sep
 
-        if self.link_target.startswith(topdir):
+        if self.link_target_inside(topdir):
             tpath = self.link_target[len(topdir):]
             log.debug("Normalise: %s -> %s (topdir %s)",
                         self.link_target, tpath, topdir)
@@ -323,6 +354,70 @@ class FileHash(object):
         else:
             return self.link_target
 
+
+    def source_symlink_make_relative(self, srcdir, absolute_is_error=False):
+        '''
+        On the source side, find if a symlink is under srcdir, and
+        if it is, make it relative. If not, make it absolute.
+
+        Returns the best path we can make. If it starts with a '/', it's
+        absolute and so is out of the tree.
+
+        If absolute_is_error, throw an Error for non-absolute results.
+
+        srcdir must be absolute. We need to start somewhere.
+
+        Throws an Error if not a symlink.
+        '''
+
+        if not srcdir.startswith(os.sep):
+            raise PathMustBeAbsoluteError(
+                "'%s' must be an absolute path", srcdir)
+
+        if not S_ISLNK(self.mode):
+            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
+                                                self.fpath)
+        log.debug("source_symlink_make_relative: %s, %s",
+                    self.fpath, self.link_target)
+
+        topdir = os.path.normpath(srcdir)
+        if not topdir.endswith(os.sep):
+            topdir += os.sep
+        log.debug("XXX topdir '%s", topdir)
+
+        tpath = self.link_target
+        norm_tpath = os.path.normpath(tpath)
+        log.debug("XXX tpath '%s' norm_tpath '%s'", tpath, norm_tpath)
+
+        spath_full = os.path.join(topdir, self.fpath)
+        norm_spath_full = os.path.normpath(spath_full)
+        log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full, norm_spath_full)
+
+        norm_lpath_full = os.path.dirname(norm_spath_full)
+        log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
+        # This is the location of the symlink (dirname fpath) plus the link
+        # target.
+        tpath_full = os.path.join(topdir, norm_lpath_full, self.link_target)
+        norm_tpath_full = os.path.normpath(tpath_full)
+        log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full, norm_tpath_full)
+
+        if norm_tpath_full.startswith(topdir):
+            # We're under the source path -> relative link.
+            tpath_rel = os.path.relpath(norm_tpath_full, norm_lpath_full)
+            log.debug("link relative: '%s' -> '%s'", tpath_full, tpath_rel)
+            return tpath_rel
+
+        else:
+            if absolute_is_error:
+                raise SymlinkPointsOutsideTreeError(
+                    "'%s' points outside the file tree "
+                    "('%s', normalised to '%s') "
+                    "and absolute links are disabled",
+                    self.fpath, self.link_target, norm_tpath_full)
+
+            # We're not under the source path -> absolute link.
+            log.debug("link cannot be made relative : '%s' -> '%s'", tpath, norm_tpath_full)
+            return norm_tpath_full
 
 
     def __str__(self):
