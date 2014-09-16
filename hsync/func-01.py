@@ -130,7 +130,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 
 	def test_local_verify2(self):
-		'''Trivial contents change verify fail'''
+		'''Trivial contents change verify check'''
 		def change_f1_1(out_tmp):
 			'''Contents change'''
 			fh = open(os.path.join(out_tmp, 'f1'), 'w')
