@@ -103,9 +103,9 @@ def hashlist_generate(srcpath, opts, source_mode=True):
             if skipped:
                 continue
 
-            if os.path.islink(fpath):
-                log.warn("Ignoring symbolic link '%s'", fpath) # XXX is this right?
-                continue
+            # if os.path.islink(fpath):
+            #     log.warn("Ignoring symbolic link '%s'", fpath) # XXX is this right?
+            #     continue
 
             log.debug("Add file: %s", fpath)
             if source_mode and opts.verbose:
@@ -256,6 +256,7 @@ def fetch_needed(needed, source, opts):
 
         
         source_url = urlparse.urljoin(source, fh.fpath)
+
         if fh.is_file:
             if opts.verbose:
                 print("Get file: %s" % fh.fpath)
@@ -301,10 +302,54 @@ def fetch_needed(needed, source, opts):
                 raise OSOperationFailedError("Failed to rename '%s' to '%s'",
                     tgt_file_rnd, tgt_file)
 
+        elif fh.is_link:
+            linkpath = os.path.join(opts.dest_dir, fh.fpath)
+
+            if not os.path.exists(linkpath):
+                log.debug("Creating symlink '%s'->'%s'",
+                            linkpath, fh.link_target)
+                if opts.verbose:
+                    print("Create symlink %s -> %s" %
+                            (linkpath, fh.link_target))
+                os.symlink(fh.link_target, linkpath)
+
+            else:
+                log.debug("Path '%s' exists in the filesystem", linkpath)
+                if not os.path.islink(linkpath):
+                    raise NonLinkFoundAtLinkLocationError(
+                        "Non-symlink found where we want a symlink ('%s')",
+                        linkpath)
+
+                else:
+                    # Symlink found. Check it.
+                    curtgt = os.readlink(linkpath)        
+                    # Create or move the symlink.
+                    if curtgt != fh.link_target:
+                        log.debug("Moving symlink '%s'->'%s'",
+                                     linkpath, dh.link_target)
+                        if opts.verbose:
+                            print("Move symlink %s -> %s" %
+                                    (linkpath, fh.link_target))                       
+                        os.symlink(fh.link_target, linkpath)
+
+            expect_uid = mapper.get_uid_for_name(fh.user)
+            expect_gid = mapper.get_gid_for_name(fh.group)
+
+            lstat = os.lstat(linkpath)
+            if lstat.st_uid != expect_uid or lstat.st_gid != expect_gid:
+                log.debug("Changing link '%s' ownership to %s/%s",
+                    linkpath, expect_uid, expect_gid)
+                os.lchown(linkpath, expect_uid, expect_gid)
+
+            if lstat.st_mode != fh.mode:
+                log.debug("Changing link '%s' mode to %06o",
+                            linkpath, fh.mode)
+                os.lchmod(linkpath, fh.mode)
+
         elif fh.is_dir:
             tgt_dir = os.path.join(opts.dest_dir, fh.fpath)
             if os.path.exists(tgt_dir):
-                log.debug("Directory '%s' found", tgt_dir)
+                log.debug("Path '%s' exists in the filesystem", tgt_dir)
                 if not os.path.isdir(tgt_dir):
                     raise NonDirFoundAtDirLocationError(
                         "Non-directory found where we want a directory ('%s')",
@@ -312,7 +357,7 @@ def fetch_needed(needed, source, opts):
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
                 if opts.verbose:
-                    print("Make dir: %s" % fh.fpath)
+                    print("Create dir: %s" % fh.fpath)
                 os.mkdir(tgt_dir, fh.mode)
 
             # Dealing with a directory on the filesystem, not an fd - use the

@@ -52,7 +52,7 @@ class FileHash(object):
             self.fpath = self.fullpath[len(root)+1:]
         else:
             self.fpath = self.fullpath
-        self.stat = os.stat(self.fullpath)
+        self.stat = os.lstat(self.fullpath)
         mode = self.mode = self.stat.st_mode
         self.uid = self.stat.st_uid
         self.user = self.mapper.get_name_for_uid(self.uid)
@@ -77,6 +77,9 @@ class FileHash(object):
 
         elif S_ISLNK(mode):
             self.is_link = True
+            log.debug("Reading symlink '%s'", self.fullpath)
+            self.link_target = os.readlink(self.fullpath)
+            log.debug("Symlink '%s' -> '%s'", self.fullpath, self.link_target)
             # Recreate symlinks, copy is unlikely to work as the target
             # (if it's a web server) will probably not send the link
             # contents, more likely it will send the target contents.
@@ -236,8 +239,7 @@ class FileHash(object):
                        self.hashstr, self.mode,
                        self.user, self.group,
                        self.mtime, self.size,
-                       self.fpath
-                       )
+                       fpath)
 
 
     def can_compare(self, other):

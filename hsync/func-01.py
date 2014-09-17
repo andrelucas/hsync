@@ -5,6 +5,7 @@
 import inspect
 import os
 import shutil
+import stat
 import subprocess
 import unittest
 
@@ -14,12 +15,24 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	me = inspect.getfile(inspect.currentframe())
 	topdir = os.path.join(os.path.dirname(me), 'test')
+	in_tmp = os.path.join(topdir, 'in_tmp')
+	out_tmp = os.path.join(topdir, 'out_tmp')
+
+
+	def tearDown(self):
+		shutil.rmtree(self.in_tmp, True)
+		shutil.rmtree(self.out_tmp, True)
+
 
 	def rundiff(self, in_dir, out_dir=None, delete=True,
 				src_optlist=None, dst_optlist=None):
 		'''
 		Set up copies of an existing tree (or existing trees), run hsync
 		and report on any differences.
+
+		Differences are detected using 'diff -Purd'. This has a few problems,
+		notably it's not that portable, and that broken symlinks will cause
+		it to fail.
 
 		If delete is True, remove the temporary output directories.
 		Otherwise, return (in_tmp, out_tmp), probably for further
@@ -30,18 +43,18 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 		'''
 
-		in_tmp = os.path.join(self.topdir, 'in_tmp')
+		in_tmp = self.in_tmp
+		out_tmp = self.out_tmp
 		hashfile = os.path.join(self.topdir, 'in_tmp', 'HSYNC.SIG')
-		out_tmp = os.path.join(self.topdir, 'out_tmp')
 		
 		shutil.rmtree(in_tmp, True)
 		shutil.rmtree(out_tmp, True)
 
-		shutil.copytree(os.path.join(self.topdir, in_dir), in_tmp)
+		shutil.copytree(os.path.join(self.topdir, in_dir), in_tmp, symlinks=True)
 		subprocess.check_call(['find', in_tmp, '-name', '.gitignore',
 								'-exec', 'rm', '{}', ';'])
 		if out_dir is not None:
-			shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp)
+			shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp, symlinks=True)
 			subprocess.check_call(['find', out_tmp, '-name', '.gitignore',
 									'-exec', 'rm', '{}', ';'])
 		else:
@@ -157,5 +170,35 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		self.assertTrue(self.runverify('t_verify4_in', None,
 										vfy_optlist=['--ignore-mode'],
 										munge_output=change_f1_2))
+
+	def _checklink(self, linkpath, target):
+		lstat = os.lstat(linkpath)
+		self.assertTrue(stat.S_ISLNK(lstat.st_mode), "Symlink created")
+		self.assertEqual(os.readlink(linkpath), target, "Symlink target correct")
+
+
+	def test_local_symlink1(self):
+		'''Simple symlink copy'''
+		
+
+		self.rundiff('t_sym1_in', None, delete=False)
+		#subprocess.check_call(("ls -lR %s" % self.out_tmp).split())
+		linkpath = os.path.join(self.out_tmp, 'l1')
+		self._checklink(linkpath, 'f1')
+
+	def test_local_symlink2(self):
+		'''Symlink copy with relative paths'''
+		self.rundiff('t_sym2_in', None, delete=False)
+		linkpath = os.path.join(self.out_tmp, 'd1/d1.1/l1')
+		self._checklink(linkpath, '../../f1')
+		
+
+	def test_local_symlink3_del(self):
+		'''Delete symlink'''
+		self.rundiff('t_sym3_in', 't_sym3_out', delete=False)
+		# Make sure it didn't delete the target.
+		fpath = os.path.join(self.out_tmp, 'f1')
+		self.assertTrue(os.path.exists(fpath), "Didn't delete target")
+		self.assertTrue(stat.S_ISREG(os.lstat(fpath).st_mode), "Didn't transmute target")
 
 
