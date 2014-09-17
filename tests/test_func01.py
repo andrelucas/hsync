@@ -16,7 +16,7 @@ import time
 import unittest
 import urllib2
 
-import hsync
+from hsync import hsync
 
 log = logging.getLogger()
 

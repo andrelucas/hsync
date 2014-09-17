@@ -5,8 +5,8 @@ import os
 import shutil
 import unittest
 
-from idmapper import *
-from filehash import *
+from hsync.idmapper import *
+from hsync.filehash import *
 
 
 class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):

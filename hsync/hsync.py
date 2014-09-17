@@ -565,6 +565,9 @@ def main(cmdargs):
 
 
         hashurl = opt.source_url
+        up = urlparse.urlparse(hashurl)
+        if up.scheme == '':
+            opt.source_url = hashurl = urlparse.urljoin('file:', opt.source_url)
         if not hashurl.endswith("/"):
             hashurl += "/"
         hashurl = urlparse.urljoin(hashurl, opt.hash_file)
