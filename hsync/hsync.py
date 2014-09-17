@@ -15,7 +15,7 @@ from random import SystemRandom
 import re
 from stat import *
 import sys
-import urllib
+import urllib2
 import urlparse
 
 from exceptions import *
@@ -437,7 +437,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
         fullpath = os.path.join(opt.source_url, fpath)
 
     log.debug("fetch_contents: %s", fullpath)
-    contents = urllib.urlopen(fullpath).read()
+    contents = urllib2.urlopen(fullpath).read()
     return contents
 
 
@@ -460,6 +460,13 @@ def main(cmdargs):
         help="Show download progress")
     recv.add_option("--ignore-mode", action="store_true",
         help="Ignore differences in file modes")
+    recv.add_option("--http-user",
+        help="Specify the HTTP auth user")
+    recv.add_option("--http-pass",
+        help="Specify the HTTP auth password")
+    recv.add_option("--http-auth-type", default='basic',
+        help="Specify HTTP auth type (basic|digest) "
+            "[default: %default]")
     p.add_option_group(recv)
 
     meta = optparse.OptionGroup(p, "Other options")
@@ -530,6 +537,31 @@ def main(cmdargs):
 
     # Receive-side.
     if opt.dest_dir:
+
+        if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
+            log.error("HTTP auth type must be one of 'digest' or 'basic'")
+            return False
+
+        if opt.http_user:
+            log.debug("Configuring HTTP authentication")
+            if not opt.http_pass:
+                log.error("HTTP proxy password must be specified")
+
+            pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+            pwmgr.add_password(None, opt.source_url,
+                                opt.http_user, opt.http_pass)
+            auth_opener = None
+            if opt.http_auth_type == 'digest':
+                log.debug("Configuring digest authentication")
+                auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
+
+            else:
+                log.debug("Configuring basic authentication")
+                auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
+
+            urllib2.install_opener(auth_opener)
+
+
         hashurl = opt.source_url
         if not hashurl.endswith("/"):
             hashurl += "/"
@@ -540,6 +572,7 @@ def main(cmdargs):
         src_hashlist = hashlist_from_stringlist(strfile, opt)
         (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
                                                         src_hashlist, opt)
+
 
         if opt.verify_only:
             # Give a report if we're verbose.
