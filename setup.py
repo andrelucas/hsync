@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
         name = 'hsync',
@@ -9,6 +9,12 @@ setup(
         author = 'André Lucas',
         author_email = 'andre.lucas@devinfotech.co.uk',
         license = 'BSD',
-        packages = [ 'hsync' ],
+        packages = [ 'hsync', ],
+
+        entry_points={
+            'console_scripts': [
+                'hsync = hsync.hsync:csmain',
+            ],
+    },
 )
 
