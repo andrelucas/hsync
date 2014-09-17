@@ -2,13 +2,19 @@
 
 # Functional tests for hsync.
 
+from __future__ import print_function
+
 import inspect
 import logging
 import os
 import shutil
 import stat
+import cStringIO as StringIO
 import subprocess
+import sys
+import time
 import unittest
+import urllib2
 
 import hsync
 
@@ -17,9 +23,43 @@ log = logging.getLogger()
 class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	me = inspect.getfile(inspect.currentframe())
-	topdir = os.path.join(os.path.dirname(me), 'test')
+	medir = os.path.dirname(me)
+	topdir = os.path.join(medir, 'test')
 	in_tmp = os.path.join(topdir, 'in_tmp')
 	out_tmp = os.path.join(topdir, 'out_tmp')
+	web_server_running = False
+
+	wport = 8880
+
+	@classmethod
+	def setUpClass(cls):
+		oldwd = os.getcwd()
+		os.chdir(os.path.dirname(cls.topdir))
+		redir = StringIO.StringIO()
+		cmd = "/usr/bin/env python -m SimpleHTTPServer %d" % cls.wport
+		#fnull = open(os.devnull, 'w')
+		fnull = open('server.log', 'w')
+		cls.webp = subprocess.Popen(cmd.split(),
+								stdout=fnull, stderr=subprocess.STDOUT)
+		os.chdir(oldwd)
+		time.sleep(1)
+		success = False
+		for n in range(1,5):
+			try:
+				u = urllib2.urlopen('http://127.0.0.1:8080/')
+				success = True
+				cls.web_server_running = True
+			except URLError:
+				log.debug("Waiting for server to start (%d)" % n)
+				time.sleep(1)
+		if not success:
+			raise OSError("Failed to start web server")
+
+
+	@classmethod
+	def tearDownClass(cls):
+		cls.webp.terminate()
+		cls.webp.wait()
 
 
 	def tearDown(self):
@@ -69,10 +109,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		self.assertTrue(hsync.main(srcopt))
 
 		in_url = in_tmp
-		httpd = None
 		port = None
+		if web:
+			in_url = 'http://127.0.0.1:%d/test/in_tmp' % (self.wport)
+			log.debug("Fetch URL: %s", in_url)
 
-
+		#time.sleep(20) # XXX
 		dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_url, '-d']
 		if dst_optlist is not None:
 			dstopt.extend(dst_optlist)
@@ -159,7 +201,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		def change_f1_1(out_tmp):
 			'''Contents change'''
 			fh = open(os.path.join(out_tmp, 'f1'), 'w')
-			print >>fh, "hello2"
+			print("hello2", file=fh)
 			fh.close()
 
 		self.assertFalse(self.runverify('t_verify3_in', None,
@@ -217,6 +259,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		tardir = 'zlib-1.2.8'
 		subprocess.check_call(("tar xzf %s" % tarball).split())
 		self.rundiff(tardir, None, web=True)
+		shutil.rmtree(tardir)
 
 
 
