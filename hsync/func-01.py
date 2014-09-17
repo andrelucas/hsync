@@ -3,6 +3,7 @@
 # Functional tests for hsync.
 
 import inspect
+import logging
 import os
 import shutil
 import stat
@@ -10,6 +11,8 @@ import subprocess
 import unittest
 
 import hsync
+
+log = logging.getLogger()
 
 class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
@@ -25,7 +28,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 
 	def rundiff(self, in_dir, out_dir=None, delete=True,
-				src_optlist=None, dst_optlist=None):
+				src_optlist=None, dst_optlist=None, web=False):
 		'''
 		Set up copies of an existing tree (or existing trees), run hsync
 		and report on any differences.
@@ -65,7 +68,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			srcopt.extend(src_optlist)
 		self.assertTrue(hsync.main(srcopt))
 
-		dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_tmp, '-d']
+		in_url = in_tmp
+		httpd = None
+		port = None
+
+
+		dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_url, '-d']
 		if dst_optlist is not None:
 			dstopt.extend(dst_optlist)
 		self.assertTrue(hsync.main(dstopt))
@@ -171,6 +179,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 										vfy_optlist=['--ignore-mode'],
 										munge_output=change_f1_2))
 
+
 	def _checklink(self, linkpath, target):
 		lstat = os.lstat(linkpath)
 		self.assertTrue(stat.S_ISLNK(lstat.st_mode), "Symlink created")
@@ -179,13 +188,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	def test_local_symlink1(self):
 		'''Simple symlink copy'''
-		
-
 		self.rundiff('t_sym1_in', None, delete=False)
 		#subprocess.check_call(("ls -lR %s" % self.out_tmp).split())
 		linkpath = os.path.join(self.out_tmp, 'l1')
 		self._checklink(linkpath, 'f1')
 
+	
 	def test_local_symlink2(self):
 		'''Symlink copy with relative paths'''
 		self.rundiff('t_sym2_in', None, delete=False)
@@ -200,5 +208,15 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		fpath = os.path.join(self.out_tmp, 'f1')
 		self.assertTrue(os.path.exists(fpath), "Didn't delete target")
 		self.assertTrue(stat.S_ISREG(os.lstat(fpath).st_mode), "Didn't transmute target")
+
+
+	def test_web_tarball(self):
+		'''Unpack some tarballs, run a web server on their dir and diff'''
+		os.chdir(self.topdir)
+		tarball = 'zlib-1.2.8.tar.gz'
+		tardir = 'zlib-1.2.8'
+		subprocess.check_call(("tar xzf %s" % tarball).split())
+		self.rundiff(tardir, None, web=True)
+
 
 
