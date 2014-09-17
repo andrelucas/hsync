@@ -403,6 +403,8 @@ def delete_not_needed(not_needed, target, opts):
         else:
             fullpath = os.path.join(target, fh.fpath)
             log.debug("delete_not_needed: %s", fullpath)
+            if opts.verbose:
+                print("Remove file: %s" % fh.fpath)
             os.remove(fullpath)
 
     if dirs_to_delete:
@@ -412,7 +414,7 @@ def delete_not_needed(not_needed, target, opts):
         for d in dirs_to_delete:
             fullpath = os.path.join(target, d.fpath)
             if opts.verbose:
-                print("Remove dir: %s\n", d.fpath)
+                print("Remove dir: %s" % d.fpath)
             log.debug("Deleting directory '%s'", fullpath)
             os.rmdir(fullpath)
 
