@@ -133,7 +133,7 @@ def sigfile_write(hashlist, abs_path, opts):
         print("Generating signature file %s" % abs_path)
 
 
-    log.debug("Writing hash file '%s", abs_path)
+    log.debug("Writing hash file '%s'", abs_path)
     sigfile = open(abs_path, 'w')
     for fh in hashlist:
         print(fh.presentation_format(), file=sigfile)
@@ -490,7 +490,9 @@ def main(cmdargs):
     recv.add_option("-D", "--dest-dir",
         help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
-        help="Specify the source URL")
+        help="Specify the data source URL")
+    recv.add_option("-U", "--signature-url",
+        help="Specify the signature file's URL [default: <source_url>/HSYNC.SIG]")
     recv.add_option("--no-write-hashfile", action="store_true",
         help="Don't write a signature file after sync")
     recv.add_option("-P", "--progress", action="store_true",
@@ -569,7 +571,13 @@ def main(cmdargs):
 
         hashlist = hashlist_generate(opt.source_dir, opt)
         if hashlist is not None:
-            abs_hashfile = os.path.join(opt.source_dir, opt.hash_file)
+            hashfile = 'HSYNC.SIG'
+            if opt.hash_file:
+                hashfile = opt.hash_file
+
+            abs_hashfile = os.path.join(opt.source_dir, hashfile)
+    
+            log.debug("Hash file: '%s'", abs_hashfile)
             if not sigfile_write(hashlist, abs_hashfile, opt):
                 log.error("Failed to write signature file '%s'",
                     os.path.join(opt.source_dir, opt.hash_file))
@@ -611,18 +619,41 @@ def main(cmdargs):
             log.debug("Configuring proxy")
             
 
+        def cano_url(url, slash=False):
+            up = urlparse.urlparse(url)
+            log.debug("urlparse: %s", up.geturl())
+            if up.scheme == '':
+                url = 'file://' + url
+                log.debug("Add scheme, URL=%s", url)
+            if slash and not url.endswith("/"):
+                url += "/"
+            return url
 
-        hashurl = opt.source_url
-        up = urlparse.urlparse(hashurl)
-        if up.scheme == '':
-            opt.source_url = hashurl = urlparse.urljoin('file:', opt.source_url)
-        if not hashurl.endswith("/"):
-            hashurl += "/"
-        hashurl = urlparse.urljoin(hashurl, opt.hash_file)
-        log.debug("Will fetch hashes from %s", hashurl)
+        hashurl = None
+        if opt.signature_url:
+            hashurl = cano_url(opt.signature_url)
+            log.debug("Explicit signature URL '%s'", hashurl)
+
+        else:
+            hashurl = cano_url(opt.source_url) + '/' + opt.hash_file
+            log.debug("Synthesised signature URL '%s'", hashurl)
+
+        # hashurl = cano_url(opt.source_url)
+        # up = urlparse.urlparse(hashurl)
+        # if up.scheme == '':
+        #     opt.source_url = hashurl = urlparse.urljoin('file:', opt.source_url)
+        # if not hashurl.endswith("/"):
+        #     hashurl += "/"
+        # hashurl = urlparse.urljoin(hashurl, opt.hash_file)
+
         strfile = fetch_contents(hashurl, opt).splitlines()
 
+        opt.source_url = cano_url(opt.source_url, slash=True)
+        log.debug("Source url '%s", opt.source_url)
+
         src_hashlist = hashlist_from_stringlist(strfile, opt)
+
+        # Calculate the differences to the local filesystem.
         (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
                                                         src_hashlist, opt)
 
@@ -648,6 +679,7 @@ def main(cmdargs):
                 return False
 
             if not opt.no_write_hashfile and dst_hashlist is not None:
+                # FFR may need to put this elsewhere.
                 abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
                 if not sigfile_write(dst_hashlist, abs_hashfile, opt):
                     log.error("Failed to write signature file '%s'",
