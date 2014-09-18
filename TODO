@@ -3,6 +3,12 @@ TODO for hsync
 
 - Documentation
 
+- Embed version number in script and in output.
+
+- Check the HSYNC.SIG FINAL checksum
+
+- Incremental check mode
+
 - More useful progress reporting
 
 - Better tests
