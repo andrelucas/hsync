@@ -1,4 +1,10 @@
 TODO for hsync
 ==============
 
-- Missing file type handling: Symlink, socket, device
+- Documentation
+
+- More useful progress reporting
+
+- Better tests
+  - Unsupported file types (will currently just die)
+
