@@ -124,7 +124,7 @@ class FileHash(object):
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
         self.gid = self.mapper.get_gid_for_name(group)
-        self.mtime = mtime
+        self.mtime = int(mtime)
         self.size = int(size) # XXX int length?
 
         self.fpath = fpath
@@ -238,7 +238,7 @@ class FileHash(object):
         return "%s %06o %s %s %s %s %s" % (
                        self.hashstr, self.mode,
                        self.user, self.group,
-                       self.mtime, self.size,
+                       int(self.mtime), self.size,
                        fpath)
 
 

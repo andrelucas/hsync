@@ -282,6 +282,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			"Not-excluded directory does not get copied")
 		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
 			"Excluded directory does not get copied")
+		
 
 	def test_exclude_simple_dst(self):
 		'''Check manual -X option works on the client end'''
