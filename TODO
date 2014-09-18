@@ -1,7 +1,18 @@
 TODO for hsync
 ==============
 
+Bugs
+
 - Documentation
+
+- Relative filenames
+  - '-S .' doesn't work
+  - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
+
+- Add 'ignore user and group' options
+
+
+Features
 
 - Embed version number in script and in output.
 
