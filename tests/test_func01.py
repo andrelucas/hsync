@@ -46,10 +46,10 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		success = False
 		for n in range(1,5):
 			try:
-				u = urllib2.urlopen('http://127.0.0.1:8080/')
+				u = urllib2.urlopen('http://127.0.0.1:%d/' % cls.wport)
 				success = True
 				cls.web_server_running = True
-			except URLError:
+			except urllib2.URLError:
 				log.debug("Waiting for server to start (%d)" % n)
 				time.sleep(1)
 		if not success:
