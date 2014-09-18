@@ -68,7 +68,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 
 	def rundiff(self, in_dir, out_dir=None, delete=True,
-				src_optlist=None, dst_optlist=None, web=False):
+				src_optlist=None, dst_optlist=None, web=False,
+				diff_optlist=None, run_diff=True):
 		'''
 		Set up copies of an existing tree (or existing trees), run hsync
 		and report on any differences.
@@ -122,9 +123,15 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 		#os.unlink(hashfile)
 		
-		ret = subprocess.call(['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp])
-		self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
-		
+		if run_diff:
+			diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp]
+			if diff_optlist is not None:
+				diffopt.extend(diff_optlist)
+			ret = subprocess.call(diffopt)
+			# if ret != 0:
+			# 	subprocess.call("bash", shell=True)
+			self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
+
 		if delete:
 			shutil.rmtree(in_tmp)
 			shutil.rmtree(out_tmp)
@@ -262,4 +269,33 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		shutil.rmtree(tardir)
 
 
+	def test_exclude_simple_src(self):
+		'''Check manual -X option works on the server end'''
+		# Have to manually check, diff is useless here.
+		self.rundiff('t_exclude1_in', 't_exclude1_out',
+			delete=False, src_optlist=['-X', 'd2_exclude'], run_diff=False)
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
+			"Not-excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2_exclude')),
+			"Excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
+			"Not-excluded directory does not get copied")
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
+			"Excluded directory does not get copied")
+
+	def test_exclude_simple_dst(self):
+		'''Check manual -X option works on the client end'''
+		# Exclude d2_exclude on the client side (it's in the HSYNC.SIG).
+		# Have to manually check, diff is useless here.
+		self.rundiff('t_exclude2_in', 't_exclude2_out',
+			delete=False, dst_optlist=['-X', 'd2_exclude'], run_diff=False)
+		#subprocess.call("bash", shell=True)
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
+			"Not-excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2_exclude')),
+			"Excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
+			"Not-excluded directory gets copied")
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
+			"Excluded directory does not get copied")
 

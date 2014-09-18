@@ -72,8 +72,22 @@ def hashlist_generate(srcpath, opts, source_mode=True):
                 for di in dirignore:
                     if di.search(dirname):
                         if source_mode and opts.verbose:
-                            print("Skipping ignore-able dir '%s'" % dirname)
+                            print("Skipping ignore-able dir %s" % dirname)
                         dirs.remove(dirname)
+
+        # Likewise, handle the user's exclusions.
+        if opts.exclude_dir:
+            done_skip = False
+            for dirname in opts.exclude_dir:
+                if dirname in dirs:
+                    if source_mode and opts.verbose:
+                        print("Skipping manually-excluded dir %s" % dirname)
+                    log.debug("Exclude dir '%s'", dirname)
+                    dirs.remove(dirname)
+                    done_skip=True
+            if done_skip:
+                log.debug("dirs now %s", dirs)
+
 
         # Handle directories.
         for dirname in dirs:
@@ -186,11 +200,34 @@ def hashlist_check(dstpath, src_hashlist, opts):
     dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False)
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
-    # Now compare the two dictionaries.
+    direx = set()
+    if opts.exclude_dir:
+        direx = set(opts.exclude_dir)
 
+    # Now compare the two dictionaries.
     needed = []
+    excluded_dirs = set()
 
     for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
+
+        exclude = False
+
+        # Process exclusions.
+        if fh.is_dir and fpath in direx:
+            log.debug("%s: Exclude dir", fpath)
+            dpath = fpath.rstrip(os.sep) + os.sep # Make sure it ends in a slash.
+            excluded_dirs.add(dpath)
+            log.debug("Added exclusion dir: '%s'", dpath)
+            exclude = True
+
+        if not exclude: # No point checking twice.
+            for exc in excluded_dirs:
+                if fpath.startswith(exc):
+                    log.debug("Excluded '%s': Under '%s'", fpath, exc)
+                    exclude = True
+
+        if exclude:
+            continue
 
         if fpath in dst_fdict:
 
@@ -467,6 +504,8 @@ def main(cmdargs):
     recv.add_option("--http-auth-type", default='basic',
         help="Specify HTTP auth type (basic|digest) "
             "[default: %default]")
+    recv.add_option("--proxy-url",
+        help="Specify the proxy URL to use")
     p.add_option_group(recv)
 
     meta = optparse.OptionGroup(p, "Other options")
@@ -480,8 +519,15 @@ def main(cmdargs):
         help="Don't trim common ignore-able files such as *~ and *.swp")
     meta.add_option("--no-trim-path", action="store_false",
         default=True, dest='trim_path',
-        help="Don't trim the top-level path from filenames [default: "
-                "%default]. You probably don't want to do this.")
+        help="Don't trim the top-level path from filenames. It's safer to "
+            "leave this well alone.")
+    meta.add_option("-X", "--exclude-dir", action="append",
+        help="Specify a directory path (relative to the root) to ignore. "
+            "On the server side, this simply doesn't checksum the file, "
+            "which has the effect of rendering it invisible (and deletable!)"
+            "on the client side. On the client side, it prevents processing "
+            "of the path.")
+
     p.add_option_group(meta)
 
     output = optparse.OptionGroup(p, "Output options")
@@ -561,6 +607,10 @@ def main(cmdargs):
 
             urllib2.install_opener(auth_opener)
 
+        if opt.proxy_url:
+            log.debug("Configuring proxy")
+            
+
 
         hashurl = opt.source_url
         up = urlparse.urlparse(hashurl)
@@ -609,7 +659,7 @@ def main(cmdargs):
     else:
         print("Nothing to do!")
         return True
-        
+
 
 def csmain():
     if not main(sys.argv[1:]):
