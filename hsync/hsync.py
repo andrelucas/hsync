@@ -25,6 +25,8 @@ from idmapper import *
 
 log = logging.getLogger()
 
+class URLMustBeOfTypeFileError(Exception): pass
+
 
 def hashlist_generate(srcpath, opts, source_mode=True):
     '''
@@ -460,7 +462,6 @@ def delete_not_needed(not_needed, target, opts):
     return True
 
 
-
 def fetch_contents(fpath, opts, root='', no_trim=False):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
@@ -478,6 +479,17 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
     return contents
 
 
+def _cano_url(url, slash=False):
+    up = urlparse.urlparse(url)
+    log.debug("urlparse: %s", up.geturl())
+    if up.scheme == '':
+        url = 'file://' + url
+        log.debug("Add scheme, URL=%s", url)
+    if slash and not url.endswith("/"):
+        url += "/"
+    return url
+
+
 def main(cmdargs):
     p = optparse.OptionParser()
 
@@ -491,8 +503,6 @@ def main(cmdargs):
         help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
         help="Specify the data source URL")
-    recv.add_option("-U", "--signature-url",
-        help="Specify the signature file's URL [default: <source_url>/HSYNC.SIG]")
     recv.add_option("--no-write-hashfile", action="store_true",
         help="Don't write a signature file after sync")
     recv.add_option("-P", "--progress", action="store_true",
@@ -509,6 +519,9 @@ def main(cmdargs):
     recv.add_option("--proxy-url",
         help="Specify the proxy URL to use")
     p.add_option_group(recv)
+
+    recv.add_option("-U", "--signature-url",
+        help="Specify the signature file's URL [default: <source_url>/HSYNC.SIG]")
 
     meta = optparse.OptionGroup(p, "Other options")
     meta.add_option("-V", "--verify-only", action="store_true",
@@ -571,13 +584,27 @@ def main(cmdargs):
 
         hashlist = hashlist_generate(opt.source_dir, opt)
         if hashlist is not None:
-            hashfile = 'HSYNC.SIG'
-            if opt.hash_file:
-                hashfile = opt.hash_file
 
-            abs_hashfile = os.path.join(opt.source_dir, hashfile)
-    
-            log.debug("Hash file: '%s'", abs_hashfile)
+            abs_hashfile = None
+            
+            if opt.signature_url:
+                hashurl = _cano_url(opt.signature_url)
+                log.debug("Explicit signature URL '%s'", hashurl)
+                up = urlparse.urlparse(hashurl)
+                if up.scheme != 'file':
+                    raise URLMustBeOfTypeFileError(
+                        "Signature URL '%s' must be a local file", hashurl)
+                abs_hashfile = up.path
+                log.debug("Explicit signature file '%s'", abs_hashfile)
+
+            else:
+                hashfile = 'HSYNC.SIG'
+                if opt.hash_file:
+                    hashfile = opt.hash_file
+
+                abs_hashfile = os.path.join(opt.source_dir, hashfile)
+                log.debug("Synthesised hash file location: '%s'", abs_hashfile)
+
             if not sigfile_write(hashlist, abs_hashfile, opt):
                 log.error("Failed to write signature file '%s'",
                     os.path.join(opt.source_dir, opt.hash_file))
@@ -619,36 +646,18 @@ def main(cmdargs):
             log.debug("Configuring proxy")
             
 
-        def cano_url(url, slash=False):
-            up = urlparse.urlparse(url)
-            log.debug("urlparse: %s", up.geturl())
-            if up.scheme == '':
-                url = 'file://' + url
-                log.debug("Add scheme, URL=%s", url)
-            if slash and not url.endswith("/"):
-                url += "/"
-            return url
-
         hashurl = None
         if opt.signature_url:
-            hashurl = cano_url(opt.signature_url)
+            hashurl = _cano_url(opt.signature_url)
             log.debug("Explicit signature URL '%s'", hashurl)
 
         else:
-            hashurl = cano_url(opt.source_url) + '/' + opt.hash_file
+            hashurl = _cano_url(opt.source_url) + '/' + opt.hash_file
             log.debug("Synthesised signature URL '%s'", hashurl)
-
-        # hashurl = cano_url(opt.source_url)
-        # up = urlparse.urlparse(hashurl)
-        # if up.scheme == '':
-        #     opt.source_url = hashurl = urlparse.urljoin('file:', opt.source_url)
-        # if not hashurl.endswith("/"):
-        #     hashurl += "/"
-        # hashurl = urlparse.urljoin(hashurl, opt.hash_file)
 
         strfile = fetch_contents(hashurl, opt).splitlines()
 
-        opt.source_url = cano_url(opt.source_url, slash=True)
+        opt.source_url = _cano_url(opt.source_url, slash=True)
         log.debug("Source url '%s", opt.source_url)
 
         src_hashlist = hashlist_from_stringlist(strfile, opt)

@@ -299,3 +299,11 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
 			"Excluded directory does not get copied")
 
+
+	def test_signature_url(self):
+		'''Check the signature-outside-tree feature works'''
+		sigurl = '%s/t_sigoutside1/HSYNC.SIG' % self.topdir
+		self.rundiff('t_sigoutside1/in', 't_sigoutside1/out',
+			src_optlist=['-U', sigurl],
+			dst_optlist=['-U', sigurl])
+		os.unlink(sigurl)
