@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
         name = 'hsync',
-        version = '0.2',
+        version = '0.3',
         author = 'André Lucas',
         author_email = 'andre.lucas@devinfotech.co.uk',
         license = 'BSD',
