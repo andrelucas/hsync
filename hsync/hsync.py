@@ -103,10 +103,6 @@ def hashlist_generate(srcpath, opts, source_mode=True):
             if skipped:
                 continue
 
-            # if os.path.islink(fpath):
-            #     log.warn("Ignoring symbolic link '%s'", fpath) # XXX is this right?
-            #     continue
-
             log.debug("Add file: %s", fpath)
             if source_mode and opts.verbose:
                 print("Add file: %s" % fpath)
@@ -162,8 +158,10 @@ def hashlist_from_stringlist(strfile, opts):
 
     hashlist = []
     for l in strfile:
+        if l.startswith("#"):
+            pass # FFR
         if l.startswith("FINAL: "):
-            pass # XXX
+            pass # FFR
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=opts.dest_dir)
             hashlist.append(fh)
@@ -538,7 +536,7 @@ def main(cmdargs):
             return False
 
     # Receive-side.
-    if opt.dest_dir:
+    elif opt.dest_dir:
 
         if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
             log.error("HTTP auth type must be one of 'digest' or 'basic'")
@@ -607,6 +605,11 @@ def main(cmdargs):
                 return False
 
             return True
+
+    else:
+        print("Nothing to do!")
+        return True
+        
 
 def csmain():
     if not main(sys.argv[1:]):

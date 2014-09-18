@@ -347,7 +347,7 @@ class FileHash(object):
         topdir = os.path.normpath(srcdir)
         if not topdir.endswith(os.sep):
             topdir += os.sep
-        log.debug("XXX topdir '%s", topdir)
+        #log.debug("XXX topdir '%s", topdir)
 
         tpath = self.link_target
         norm_tpath = os.path.normpath(tpath)
