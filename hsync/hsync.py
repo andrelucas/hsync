@@ -60,9 +60,9 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
     if not opts.quiet:
         if source_mode:
-            print("Scanning filesystem")
+            print("Scanning source filesystem")
         else:
-            print("Comparing filesystem")
+            print("Comparing local filesystem to signature file")
 
     # If we're the target, defer reading file contents until we're asked to
     # compare. That way, if we're trusting the mtime, we may not have to read
