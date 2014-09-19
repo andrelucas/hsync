@@ -9,7 +9,7 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- Add 'ignore user and group' options
+- Really need progress meters
 
 
 Features
