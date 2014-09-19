@@ -11,13 +11,8 @@ Bugs
 
 - Really need progress meters
 
-- Don't crap out completely on 404s.
-  - The remote changing should not stop an overnight sync (maybe should be a toggle)
-
 
 Features
-
-- Embed version number in script and in output.
 
 - Check the HSYNC.SIG FINAL checksum
 
