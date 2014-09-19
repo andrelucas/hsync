@@ -19,6 +19,7 @@ import sys
 import urllib2
 import urlparse
 
+from numformat import size
 from exceptions import *
 from filehash import *
 from idmapper import *
@@ -292,9 +293,13 @@ def fetch_needed(needed, source, opts):
         source_url = urlparse.urljoin(source, fh.fpath)
 
         if fh.is_file:
-            if not opts.quiet:
-                print("Get file: %s" % fh.fpath)
-            contents = fetch_contents(source_url, opts)
+            
+            # if not opts.quiet:
+            #     print("Get file: %s" % fh.fpath)
+
+            # Fetch_contents will display progress information itself.
+            contents = fetch_contents(source_url, opts, for_filehash=fh)
+
             if contents is None:
                 if opts.fail_on_errors:
                     raise ContentsFetchFailedException(
@@ -468,7 +473,8 @@ def delete_not_needed(not_needed, target, opts):
     return True
 
 
-def fetch_contents(fpath, opts, root='', no_trim=False):
+def fetch_contents(fpath, opts, root='', no_trim=False,
+                    for_filehash=None, short_name=None):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
 
@@ -480,11 +486,63 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
     if not no_trim and opts.trim_path and root:
         fullpath = os.path.join(opt.source_url, fpath)
 
+    fh = None
+    if for_filehash is not None:
+        fh = for_filehash
+
+    # Try to get a friendly name.
+    fname = fpath
+    if short_name:
+        fname = short_name
+    elif fh is not None:
+        fname = fh.fpath
+
     log.debug("fetch_contents: %s", fullpath)
+    if not opts.progress:
+        print("Get file: %s" % (fname))
+
+    contents_array = []
 
     try:
         url = urllib2.urlopen(fullpath)
-        contents = url.read()
+
+        size = 0
+        size_is_known = False
+        block_size = 256 * 1000 # 256KB.
+
+        if fh is not None:
+            size = fh.size
+
+        elif 'content-length' in url.info()['content-length']:
+            size = int(url.info()['content-length'])
+            size_is_known = True
+
+        bytes_read = 0
+        more_to_read = True
+        last_strlen = 0
+
+        while more_to_read:
+            log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
+            try:
+                new_bytes = url.read(block_size)
+                if not new_bytes:
+                    more_to_read = False
+                else:
+                    bytes_read += len(new_bytes)
+                    contents_array.append(new_bytes)
+                    if opts.progress:
+                        if size:
+                            pct = 100.0*bytes_read / size
+                            out = "%s (%.0f%% %d/%d)\r" % (fname, pct, bytes_read, size)
+                            print(out, end='')
+                            last_strlen = len(out)
+                        else:
+                            print("%s (%d/unknown) \r" % (fname, bytes_read), end='')
+
+            except urllib2.URLError, e:
+                log.warn("'%s' fetch failed: %s", str(e))
+                raise e
+
 
     except urllib2.HTTPError, e:
         if e.code == 404:
@@ -493,6 +551,10 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
             return None
         else:
             raise(e)
+
+    contents = ''.join(contents_array)
+    if opts.progress:
+        print('')
 
     return contents
 
@@ -526,8 +588,6 @@ def main(cmdargs):
         help="Specify the data source URL")
     recv.add_option("--no-write-hashfile", action="store_true",
         help="Don't write a signature file after sync")
-    recv.add_option("-P", "--progress", action="store_true",
-        help="Show download progress")
     recv.add_option("--ignore-mode", action="store_true",
         help="Ignore differences in file modes")
     recv.add_option("--http-user",
@@ -581,6 +641,9 @@ def main(cmdargs):
         help="Enable debugging output")
     output.add_option("-q", "--quiet", action="store_true",
         help="Reduce output further")
+    recv.add_option("-P", "--progress", action="store_true",
+        help="Show download progress")
+
     p.add_option_group(output)
 
     (opt, args) = p.parse_args(args=cmdargs)
@@ -699,7 +762,8 @@ def main(cmdargs):
             hashurl = _cano_url(opt.source_url, slash=True) + opt.hash_file
             log.debug("Synthesised signature URL '%s'", hashurl)
 
-        hashfile_contents = fetch_contents(hashurl, opt)
+        # Fetch the signature file.
+        hashfile_contents = fetch_contents(hashurl, opt, short_name=opt.hash_file)
 
         if hashfile_contents is None:
             # We're not coming back from this.
