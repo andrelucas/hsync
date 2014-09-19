@@ -64,6 +64,14 @@ def hashlist_generate(srcpath, opts, source_mode=True):
         else:
             print("Comparing filesystem")
 
+    # If we're the target, defer reading file contents until we're asked to
+    # compare. That way, if we're trusting the mtime, we may not have to read
+    # the file at all.
+    if source_mode:
+        defer_fs_read = False
+    else:
+        defer_fs_read = True
+
 
     for root, dirs, files in os.walk(srcpath):
 
@@ -96,7 +104,9 @@ def hashlist_generate(srcpath, opts, source_mode=True):
         # Handle directories.
         for dirname in dirs:
             fpath = os.path.join(root, dirname)
-            fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
+            fh = FileHash.init_from_file(fpath, trim=opts.trim_path,
+                                            root=srcpath,
+                                            defer_read=defer_fs_read)
             if source_mode and opts.verbose:
                 print("Add dir:  %s" % fpath)
             hashlist.append(fh)
@@ -168,7 +178,7 @@ def hashlist_to_dict(hashlist):
     for fh in hashlist:
         hdict[fh.fpath] = fh
 
-    log.debug("hdict %s", hdict)
+    #log.debug("hdict %s", hdict)
     return hdict
 
 
@@ -235,26 +245,11 @@ def hashlist_check(dstpath, src_hashlist, opts):
 
         if fpath in dst_fdict:
 
-            # if src_fdict[fpath].can_compare(dst_fdict[fpath]):
-            #     if src_fdict[fpath].compare_contents(dst_fdict[fpath]):
-            #         log.debug("%s: present and hash verified", fpath)
-            #     else:
-            #         log.debug("%s: present but failed hash verify", fpath)
-            #         if opts.verify_only:
-            #             print "%s failed contents verification" % fpath
-            #         fh.verification_failed = True
-            #         needed.append(fh)
-
-            # else:
-            #     # Couldn't verify contents, assume it's needed.
-            #     log.debug("%s: present, can't compare - assume needed", fpath)
-
-            #     needed.append(fh)
             if not src_fdict[fpath].compare(dst_fdict[fpath],
-                                            ignore_mode=opts.ignore_mode):
+                                    ignore_mode=opts.ignore_mode,
+                                    trust_mtime=(not opts.always_checksum)):
                 log.debug("%s: needed", fpath)
-                needed.append(fh)
-                
+                needed.append(fh)                
 
         else:
             log.debug("%s: needed", fpath)
@@ -346,6 +341,9 @@ def fetch_needed(needed, source, opts):
                 if os.rename(tgt_file_rnd, tgt_file) == -1:
                     raise OSOperationFailedError("Failed to rename '%s' to '%s'",
                         tgt_file_rnd, tgt_file)
+
+                os.utime(tgt_file, (fh.mtime, fh.mtime))
+
 
         elif fh.is_link:
             linkpath = os.path.join(opts.dest_dir, fh.fpath)
@@ -553,6 +551,9 @@ def main(cmdargs):
         help="Verify only, do not transfer or delete files")
     meta.add_option("--fail-on-errors", action="store_true",
         help="Fail on any error. Default is to try to carry on")
+    meta.add_option("-c", "--always-checksum", action="store_true",
+        help="Always read and re-checksum files, never trust file modification"
+            "times or other metadata")
     meta.add_option("--hash-file", default="HSYNC.SIG",
         help="Specify the hash filename [default: %default]")
     meta.add_option("--no-ignore-dirs", action="store_true",

@@ -45,9 +45,19 @@ class FileHash(object):
 
 
     @classmethod
-    def init_from_file(cls, fpath, trim=False, root=''):
+    def init_from_file(cls, fpath, trim=False, root='', defer_read=False):
+
         self = cls()
+        self.is_local_file = True
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("init_from_file: '%s' trim=%s root='%s' defer_read=%s",
+                fpath, trim, root, defer_read)
+
         self.fullpath = fpath
+        self.defer_read = defer_read
+        self.has_read_contents = False
+
         if trim:
             self.fpath = self.fullpath[len(root)+1:]
         else:
@@ -59,7 +69,7 @@ class FileHash(object):
         self.gid = self.stat.st_gid
         self.group = self.mapper.get_name_for_gid(self.gid)
         self.size = self.stat.st_size
-        self.mtime = self.stat.st_mtime
+        self.mtime = int(self.stat.st_mtime)
 
         # Safe defaults.
         self.copy_by_creation = False
@@ -96,7 +106,10 @@ class FileHash(object):
 
         elif S_ISREG(mode):
             self.is_file = True
-            self.hash_file()
+            if not defer_read:
+                self.hash_file()
+                self.has_read_contents = True
+
             self.copy_by_copying = True
             self.has_real_hash = True
             self.size_comparison_valid = False
@@ -115,8 +128,13 @@ class FileHash(object):
 
     @classmethod
     def init_from_string(cls, string, trim=False, root=''):
+
         self = cls()
-        log.debug("init_from_string: %s", string)
+        self.is_local_file = False
+        
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("init_from_string: %s", string)
+
         (md, smode, user, group, mtime, size, fpath) = string.split(None, 6)
         self.hashstr = md
         mode = self.mode = int(smode, 8)
@@ -124,7 +142,7 @@ class FileHash(object):
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
         self.gid = self.mapper.get_gid_for_name(group)
-        self.mtime = int(mtime)
+        self.mtime = int(mtime) 
         self.size = int(size) # XXX int length?
 
         self.fpath = fpath
@@ -259,14 +277,20 @@ class FileHash(object):
         return self.hashstr == other.hashstr
 
 
-    def compare(self, other, ignore_uid_gid=False, ignore_mode=False):
+    def compare(self, other,
+                ignore_uid_gid=False,
+                ignore_mode=False,
+                trust_mtime=True):
         '''
         Thorough object identity check. Return True if files are the same,
         otherwise False.
         '''
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug("compare: self %s other %s", repr(self), repr(other))
+            log.debug("compare: self %s other %s ignore_uid_gid %s "
+                "ignore_mode %s trust_mtime %s",
+                repr(self), repr(other),
+                ignore_uid_gid, ignore_mode, trust_mtime)
 
         if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
@@ -285,6 +309,20 @@ class FileHash(object):
                 log.debug("Object GIDs differ")
                 return False
 
+        # If enabled, check the mtime and if it matches, consider ourselves done.
+        if trust_mtime:
+            if self.mtime == other.mtime:
+                log.debug("'%s': mtime match, assuming ok", self.fpath)
+                return True
+            else:
+                log.debug("'%s': mtime mismatch, will check", self.fpath)
+
+        # If we're a local file, we may be able to save some time.
+        if self.is_local_file:
+            if self.defer_read and not self.has_contents():
+                self.hash_file()
+                self.has_read_contents = True
+
         if self.can_compare(other):
             if not self.compare_contents(other):
                 log.debug("Hash verification failed")
@@ -292,7 +330,7 @@ class FileHash(object):
             else:
                 log.debug("Hash verified")
 
-        log.debug("Identity check pass")
+        log.debug("'%s': Identity check pass", self.fpath)
         return True
 
 
@@ -394,9 +432,10 @@ class FileHash(object):
         else:
             fpath = self.fpath
         return "[FileHash: fullpath %s fpath %s size %d " \
-                "mode %06o uid %d gid %d hashstr %s]" % (
+                "mode %06o mtime %d uid %d gid %d hashstr %s]" % (
                         self.fullpath, fpath,
                         self.size, self.mode,
+                        self.mtime,
                         self.uid, self.gid, self.hashstr)
 
 

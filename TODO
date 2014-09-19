@@ -17,6 +17,7 @@ Features
 - Check the HSYNC.SIG FINAL checksum
 
 - Incremental check mode
+  - Client side done - mtime match -> no read contents (switchable)
 
 - More useful progress reporting
 
