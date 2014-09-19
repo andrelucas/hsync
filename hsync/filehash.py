@@ -50,6 +50,9 @@ class FileHash(object):
         self = cls()
         self.is_local_file = True
 
+        if not root.endswith("/"):
+            root += "/"
+
         if log.isEnabledFor(logging.DEBUG):
             log.debug("init_from_file: '%s' trim=%s root='%s' defer_read=%s",
                 fpath, trim, root, defer_read)
@@ -59,7 +62,7 @@ class FileHash(object):
         self.has_read_contents = False
 
         if trim:
-            self.fpath = self.fullpath[len(root)+1:]
+            self.fpath = self.fullpath[len(root):]
         else:
             self.fpath = self.fullpath
         self.stat = os.lstat(self.fullpath)
