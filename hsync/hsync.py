@@ -547,6 +547,8 @@ def main(cmdargs):
         help="Specify the signature file's URL [default: <source_url>/HSYNC.SIG]")
 
     meta = optparse.OptionGroup(p, "Other options")
+    meta.add_option("--version", action="store_true",
+        help="Show the program version")
     meta.add_option("-V", "--verify-only", action="store_true",
         help="Verify only, do not transfer or delete files")
     meta.add_option("--fail-on-errors", action="store_true",
@@ -581,6 +583,11 @@ def main(cmdargs):
     p.add_option_group(output)
 
     (opt, args) = p.parse_args(args=cmdargs)
+
+    if opt.version:
+        from _version import __version__
+        print("Hsync version %s" % __version__)
+        return True
 
     if opt.quiet and (opt.verbose or opt.debug):
         log.error("It doesn't make sense to mix quiet and verbose options")
