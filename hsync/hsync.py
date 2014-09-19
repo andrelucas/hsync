@@ -5,6 +5,7 @@
 
 from __future__ import print_function
 
+from BaseHTTPServer import BaseHTTPRequestHandler
 import grp
 import hashlib
 import logging
@@ -26,6 +27,7 @@ from idmapper import *
 log = logging.getLogger()
 
 class URLMustBeOfTypeFileError(Exception): pass
+class ContentsFetchFailedError(Exception): pass
 
 
 def hashlist_generate(srcpath, opts, source_mode=True):
@@ -56,7 +58,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
     hashlist = []
 
-    if opts.verbose:
+    if not opts.quiet:
         if source_mode:
             print("Scanning filesystem")
         else:
@@ -131,7 +133,7 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
 def sigfile_write(hashlist, abs_path, opts):
 
-    if opts.verbose:
+    if not opts.quiet:
         print("Generating signature file %s" % abs_path)
 
 
@@ -295,49 +297,55 @@ def fetch_needed(needed, source, opts):
         source_url = urlparse.urljoin(source, fh.fpath)
 
         if fh.is_file:
-            if opts.verbose:
+            if not opts.quiet:
                 print("Get file: %s" % fh.fpath)
             contents = fetch_contents(source_url, opts)
-            chk = hashlib.sha256()
-            chk.update(contents)
-            if chk.hexdigest() != fh.hashstr:
-                log.warn("File '%s' failed checksum verification!", fh.fpath)
-                errorCount += 1
-                continue
+            if contents is None:
+                if opts.fail_on_errors:
+                    raise ContentsFetchFailedException(
+                        "Failed to fetch '%s'" % source_url)
 
-            tgt_file = os.path.join(opts.dest_dir, fh.fpath)
-            tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xfffffffff)
-            log.debug("Will write to '%s'", tgt_file_rnd)
-            if os.path.exists(tgt_file):
-                if os.path.islink(tgt_file):
-                    raise ParanoiaError(
-                        "Not overwriting existing symlink '%s' with file", tgt_file)
-                if os.path.isdir(tgt_file):
-                    raise DirWhereFileExpectedError(
-                        "Directory found where file expected at '%s'", tgt_file)
+            else:
+                chk = hashlib.sha256()
+                chk.update(contents)
+                if chk.hexdigest() != fh.hashstr:
+                    log.warn("File '%s' failed checksum verification!", fh.fpath)
+                    errorCount += 1
+                    continue
 
-            # Dealing with file descriptors, use os.f*() variants.
-            tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
-            if tgt == -1:
-                raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
+                tgt_file = os.path.join(opts.dest_dir, fh.fpath)
+                tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xfffffffff)
+                log.debug("Will write to '%s'", tgt_file_rnd)
+                if os.path.exists(tgt_file):
+                    if os.path.islink(tgt_file):
+                        raise ParanoiaError(
+                            "Not overwriting existing symlink '%s' with file", tgt_file)
+                    if os.path.isdir(tgt_file):
+                        raise DirWhereFileExpectedError(
+                            "Directory found where file expected at '%s'", tgt_file)
 
-            expect_uid = mapper.get_uid_for_name(fh.user)
-            expect_gid = mapper.get_gid_for_name(fh.group)
+                # Dealing with file descriptors, use os.f*() variants.
+                tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
+                if tgt == -1:
+                    raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
 
-            filestat = os.stat(tgt_file_rnd)
-            if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
-                log.debug("Changing file %s ownership to %s/%s",
-                            tgt_file_rnd, fh.user, fh.group)
-                if os.fchown(tgt, expect_uid, expect_gid) == -1:
-                    log.warn("Failed to fchown '%s' to user %s group %s",
-                            tgt_file_rnd, fh.user, fh.group)
+                expect_uid = mapper.get_uid_for_name(fh.user)
+                expect_gid = mapper.get_gid_for_name(fh.group)
 
-            os.write(tgt, contents)
-            os.close(tgt)
-            log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
-            if os.rename(tgt_file_rnd, tgt_file) == -1:
-                raise OSOperationFailedError("Failed to rename '%s' to '%s'",
-                    tgt_file_rnd, tgt_file)
+                filestat = os.stat(tgt_file_rnd)
+                if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                    log.debug("Changing file %s ownership to %s/%s",
+                                tgt_file_rnd, fh.user, fh.group)
+                    if os.fchown(tgt, expect_uid, expect_gid) == -1:
+                        log.warn("Failed to fchown '%s' to user %s group %s",
+                                tgt_file_rnd, fh.user, fh.group)
+
+                os.write(tgt, contents)
+                os.close(tgt)
+                log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
+                if os.rename(tgt_file_rnd, tgt_file) == -1:
+                    raise OSOperationFailedError("Failed to rename '%s' to '%s'",
+                        tgt_file_rnd, tgt_file)
 
         elif fh.is_link:
             linkpath = os.path.join(opts.dest_dir, fh.fpath)
@@ -345,7 +353,7 @@ def fetch_needed(needed, source, opts):
             if not os.path.exists(linkpath):
                 log.debug("Creating symlink '%s'->'%s'",
                             linkpath, fh.link_target)
-                if opts.verbose:
+                if not opts.quiet:
                     print("Create symlink %s -> %s" %
                             (linkpath, fh.link_target))
                 os.symlink(fh.link_target, linkpath)
@@ -364,7 +372,7 @@ def fetch_needed(needed, source, opts):
                     if curtgt != fh.link_target:
                         log.debug("Moving symlink '%s'->'%s'",
                                      linkpath, dh.link_target)
-                        if opts.verbose:
+                        if not opts.quiet:
                             print("Move symlink %s -> %s" %
                                     (linkpath, fh.link_target))                       
                         os.symlink(fh.link_target, linkpath)
@@ -393,7 +401,7 @@ def fetch_needed(needed, source, opts):
                         tgt_dir)
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
-                if opts.verbose:
+                if not opts.quiet:
                     print("Create dir: %s" % fh.fpath)
                 os.mkdir(tgt_dir, fh.mode)
 
@@ -415,7 +423,7 @@ def fetch_needed(needed, source, opts):
                 os.chmod(tgt_dir, fh.mode)
 
     if errorCount == 0:
-        if opts.verbose:
+        if not opts.quiet:
             print("Fetch completed")
         log.debug("Fetch completed successfully")
         return True
@@ -440,7 +448,7 @@ def delete_not_needed(not_needed, target, opts):
         else:
             fullpath = os.path.join(target, fh.fpath)
             log.debug("delete_not_needed: %s", fullpath)
-            if opts.verbose:
+            if not opts.quiet:
                 print("Remove file: %s" % fh.fpath)
             os.remove(fullpath)
 
@@ -450,7 +458,7 @@ def delete_not_needed(not_needed, target, opts):
         dirs_to_delete.sort(key=lambda x: x.fpath, reverse=True)
         for d in dirs_to_delete:
             fullpath = os.path.join(target, d.fpath)
-            if opts.verbose:
+            if not opts.quiet:
                 print("Remove dir: %s" % d.fpath)
             log.debug("Deleting directory '%s'", fullpath)
             os.rmdir(fullpath)
@@ -466,7 +474,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
 
-    May also need a proxy.
+    Returns None on a 404, re-raises the Exception otherwise.
     '''
 
     fullpath = fpath
@@ -475,11 +483,24 @@ def fetch_contents(fpath, opts, root='', no_trim=False):
         fullpath = os.path.join(opt.source_url, fpath)
 
     log.debug("fetch_contents: %s", fullpath)
-    contents = urllib2.urlopen(fullpath).read()
+
+    try:
+        url = urllib2.urlopen(fullpath)
+        contents = url.read()
+
+    except urllib2.HTTPError, e:
+        if e.code == 404:
+            resp = BaseHTTPRequestHandler.responses
+            log.warn("Failed to retrieve '%s': %s", fullpath, resp[404][0])
+            return None
+        else:
+            raise(e)
+
     return contents
 
 
 def _cano_url(url, slash=False):
+    log.debug("_cano_url: %s", url)
     up = urlparse.urlparse(url)
     log.debug("urlparse: %s", up.geturl())
     if up.scheme == '':
@@ -528,6 +549,8 @@ def main(cmdargs):
     meta = optparse.OptionGroup(p, "Other options")
     meta.add_option("-V", "--verify-only", action="store_true",
         help="Verify only, do not transfer or delete files")
+    meta.add_option("--fail-on-errors", action="store_true",
+        help="Fail on any error. Default is to try to carry on")
     meta.add_option("--hash-file", default="HSYNC.SIG",
         help="Specify the hash filename [default: %default]")
     meta.add_option("--no-ignore-dirs", action="store_true",
@@ -548,13 +571,20 @@ def main(cmdargs):
     p.add_option_group(meta)
 
     output = optparse.OptionGroup(p, "Output options")
+
     output.add_option("-v", "--verbose", action="store_true",
         help="Enable verbose output")
     output.add_option("-d", "--debug", action="store_true",
         help="Enable debugging output")
+    output.add_option("-q", "--quiet", action="store_true",
+        help="Reduce output further")
     p.add_option_group(output)
 
     (opt, args) = p.parse_args(args=cmdargs)
+
+    if opt.quiet and (opt.verbose or opt.debug):
+        log.error("It doesn't make sense to mix quiet and verbose options")
+        return False
 
     level = logging.WARNING
     if opt.verbose:
@@ -621,6 +651,10 @@ def main(cmdargs):
     # Receive-side.
     elif opt.dest_dir:
 
+        if opt.source_url is None:
+            log.error("-u/--source-url must be defined for -D/--dest-dir mode")
+            return False
+
         if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
             log.error("HTTP auth type must be one of 'digest' or 'basic'")
             return False
@@ -654,10 +688,17 @@ def main(cmdargs):
             log.debug("Explicit signature URL '%s'", hashurl)
 
         else:
-            hashurl = _cano_url(opt.source_url) + '/' + opt.hash_file
+            hashurl = _cano_url(opt.source_url, slash=True) + opt.hash_file
             log.debug("Synthesised signature URL '%s'", hashurl)
 
-        strfile = fetch_contents(hashurl, opt).splitlines()
+        hashfile_contents = fetch_contents(hashurl, opt)
+
+        if hashfile_contents is None:
+            # We're not coming back from this.
+            log.error("Failed to retrieve signature file from '%s", hashurl)
+            return False  
+
+        strfile = hashfile_contents.splitlines()
 
         opt.source_url = _cano_url(opt.source_url, slash=True)
         log.debug("Source url '%s", opt.source_url)
