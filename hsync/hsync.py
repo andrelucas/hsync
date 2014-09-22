@@ -15,6 +15,7 @@ import pwd
 from random import SystemRandom
 import re
 from stat import *
+from cStringIO import StringIO
 import sys
 import urllib2
 import urlparse
@@ -72,6 +73,10 @@ def hashlist_generate(srcpath, opts, source_mode=True):
     else:
         defer_fs_read = True
 
+    if opts.progress and source_mode:
+        verb="Add"
+    else:
+        verb="Scan"
 
     for root, dirs, files in os.walk(srcpath):
 
@@ -102,16 +107,18 @@ def hashlist_generate(srcpath, opts, source_mode=True):
 
 
         # Handle directories.
-        for dirname in dirs:
+        for n, dirname in enumerate(dirs, start=1):
             fpath = os.path.join(root, dirname)
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path,
                                             root=srcpath,
                                             defer_read=defer_fs_read)
-            if source_mode and opts.verbose:
-                print("Add dir:  %s" % fpath)
+            if opts.progress:
+                print("D: %s dir %s (dir-in-dir %d/%d)" % (verb, fpath, n, len(dirs)))
+            elif opts.verbose:
+                print("%s dir: %s" % (verb, fpath))
             hashlist.append(fh)
             
-        for filename in files:
+        for n, filename in enumerate(files, start=1):
 
             fpath = os.path.join(root, filename)
 
@@ -132,8 +139,12 @@ def hashlist_generate(srcpath, opts, source_mode=True):
                 continue
 
             log.debug("Add file: %s", fpath)
-            if source_mode and opts.verbose:
-                print("Add file: %s" % fpath)
+
+            if opts.progress:
+                print("F: %s dir %s file %s (file-in-dir %d/%d)" % (verb, root, filename, n, len(files)))
+            elif opts.verbose:
+                print("%s file: %s" % (verb, fpath))
+
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath)
 
             hashlist.append(fh)
@@ -307,7 +318,9 @@ def fetch_needed(needed, source, opts):
 
             else:
                 chk = hashlib.sha256()
+                log.debug("Hashing contents")
                 chk.update(contents)
+                log.debug("Contents hash done (%s)", chk.hexdigest())
                 if chk.hexdigest() != fh.hashstr:
                     log.warn("File '%s' failed checksum verification!", fh.fpath)
                     errorCount += 1
@@ -514,7 +527,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     pfx = "\rF: %s%s" % (fname, filecountstr)
     print(pfx, end='')
 
-    contents_array = []
+    outfile = ''
     progress = False
 
     try:
@@ -555,7 +568,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                 more_to_read = False
             else:
                 bytes_read += len(new_bytes)
-                contents_array.append(new_bytes)
+                outfile += new_bytes
                 if opts.progress:
                     if size_is_known:
                         pct = 100.0 * bytes_read / size
@@ -571,11 +584,9 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
             raise e
 
 
-    contents = ''.join(contents_array)
-
     print('')
 
-    return contents
+    return outfile
 
 
 def _cano_url(url, slash=False):
