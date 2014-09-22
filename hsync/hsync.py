@@ -542,7 +542,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
     size = 0
     size_is_known = False
-    block_size = 256 * 1000 # 256KB.
+    block_size = int(opts.fetch_blocksize)
 
     if fh is not None:
         size = fh.size
@@ -660,6 +660,9 @@ def main(cmdargs):
             "which has the effect of rendering it invisible (and deletable!)"
             "on the client side. On the client side, it prevents processing "
             "of the path.")
+    meta.add_option("--fetch-blocksize", default=256*1000,
+        help="Specify the number of bytes to retrieve at a time "
+            "[default: %default")
 
     p.add_option_group(meta)
 
@@ -785,6 +788,7 @@ def main(cmdargs):
 
         if opt.proxy_url:
             log.debug("Configuring proxy")
+            raise Exception("Explicit proxy not yet implemented")
             
 
         hashurl = None
