@@ -662,7 +662,7 @@ def main(cmdargs):
             "of the path.")
     meta.add_option("--fetch-blocksize", default=256*1000,
         help="Specify the number of bytes to retrieve at a time "
-            "[default: %default")
+            "[default: %default]")
 
     p.add_option_group(meta)
 
