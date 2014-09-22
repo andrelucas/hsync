@@ -237,7 +237,7 @@ def hashlist_from_stringlist(strfile, opts, root=None):
     return hashlist
 
 
-def hashlist_check(dstpath, src_hashlist, opts):
+def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None):
     '''
     Check the dstpath against the provided hashlist.
 
@@ -251,7 +251,8 @@ def hashlist_check(dstpath, src_hashlist, opts):
     src_fdict = hashlist_to_dict(src_hashlist)
     
     # Take the simple road. Generate a hashlist for the destination.
-    dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False)
+    dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False,
+                                        existing_hashlist=existing_hashlist)
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
     direx = set()
@@ -722,6 +723,8 @@ def dest_side(opt, args):
         log.debug("Synthesised signature URL '%s'", hashurl)
 
     # Fetch the signature file.
+    if not opt.quiet:
+        print("Fetching remote hashfile")
     hashfile_contents = fetch_contents(hashurl, opt, short_name=opt.hash_file)
 
     if hashfile_contents is None:
@@ -734,11 +737,24 @@ def dest_side(opt, args):
     opt.source_url = _cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
 
+    abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
+    existing_hl = None
+    if not opt.always_checksum and os.path.exists(abs_hashfile):
+        if not opt.quiet:
+            print("Reading existing hashfile")
+
+        # Fetch the signature file.
+        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
+                                                    short_name=opt.hash_file)
+        strfile = hashfile_contents.splitlines()
+        existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
+
     src_hashlist = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
     (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
-                                                    src_hashlist, opt)
+                                            src_hashlist, opt,
+                                            existing_hashlist=existing_hl)
 
     if opt.verify_only:
         # Give a report if we're verbose.
@@ -761,8 +777,6 @@ def dest_side(opt, args):
             return False
 
         if not opt.no_write_hashfile and dst_hashlist is not None:
-            # FFR may need to put this elsewhere.
-            abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
             if not sigfile_write(dst_hashlist, abs_hashfile, opt):
                 log.error("Failed to write signature file '%s'",
                             os.path.join(opt.source_dir, opt.hash_file))
