@@ -9,8 +9,6 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- Really need progress meters
-
 
 Features
 
@@ -18,9 +16,6 @@ Features
 
 - Incremental check mode
   - Client side done - mtime match -> no read contents (switchable)
-
-- More useful progress reporting
-  - Now shows per-file progress. More to do.
 
 - Better tests
   - Unsupported file types (will currently just die)

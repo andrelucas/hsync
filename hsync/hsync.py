@@ -343,7 +343,7 @@ def fetch_needed(needed, source, opts):
                     raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
 
                 expect_uid = mapper.get_uid_for_name(fh.user)
-                expect_gid = mapper.get_gid_for_name(fh.group)
+                expect_gid = mapper.get_gid_for_group(fh.group)
 
                 filestat = os.stat(tgt_file_rnd)
                 if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
@@ -394,7 +394,7 @@ def fetch_needed(needed, source, opts):
                         os.symlink(fh.link_target, linkpath)
 
             expect_uid = mapper.get_uid_for_name(fh.user)
-            expect_gid = mapper.get_gid_for_name(fh.group)
+            expect_gid = mapper.get_gid_for_group(fh.group)
 
             lstat = os.lstat(linkpath)
             if lstat.st_uid != expect_uid or lstat.st_gid != expect_gid:
@@ -426,7 +426,7 @@ def fetch_needed(needed, source, opts):
 
             # Change modes and ownership.
             expect_uid = mapper.get_uid_for_name(fh.user)
-            expect_gid = mapper.get_gid_for_name(fh.group)
+            expect_gid = mapper.get_gid_for_group(fh.group)
 
             dstat = os.stat(tgt_dir)
             if dstat.st_uid != expect_uid or dstat.st_gid != expect_gid:

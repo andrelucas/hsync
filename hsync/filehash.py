@@ -70,7 +70,7 @@ class FileHash(object):
         self.uid = self.stat.st_uid
         self.user = self.mapper.get_name_for_uid(self.uid)
         self.gid = self.stat.st_gid
-        self.group = self.mapper.get_name_for_gid(self.gid)
+        self.group = self.mapper.get_group_for_gid(self.gid)
         self.size = self.stat.st_size
         self.mtime = int(self.stat.st_mtime)
 
@@ -144,7 +144,7 @@ class FileHash(object):
         self.user = user
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
-        self.gid = self.mapper.get_gid_for_name(group)
+        self.gid = self.mapper.get_gid_for_group(group)
         self.mtime = int(mtime) 
         self.size = int(size) # XXX int length?
 

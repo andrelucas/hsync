@@ -23,7 +23,7 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 	@classmethod
 	def setUpClass(self):
 		self.user = self.mapper.get_name_for_uid(os.getuid())
-		self.group = self.mapper.get_name_for_gid(os.getgid())
+		self.group = self.mapper.get_group_for_gid(os.getgid())
 		self.linkbase = "0 120644 %s %s 0 0 " % (self.user, self.group)
 
 	def tearDown(self):
