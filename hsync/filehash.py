@@ -17,6 +17,7 @@ class UnsupportedFileTypeException(Exception): pass
 class LinkOperationOnNonLinkError(Exception): pass
 class PathMustBeAbsoluteError(Exception): pass
 class SymlinkPointsOutsideTreeError(Exception): pass
+class ContentsReadOnNonFileError(Exception): pass
 
 class HashStringFormatError(Exception): pass
 class BadSymlinkFormatError(HashStringFormatError): pass
@@ -36,6 +37,7 @@ dirignore = [
 class FileHash(object):
 
     blankhash = "0" * 64
+    notsethash = "F" * 64
 
     # Class-wide cache of uid<->user and gid<->group mappings.
     mapper = UidGidMapper()
@@ -109,9 +111,10 @@ class FileHash(object):
 
         elif S_ISREG(mode):
             self.is_file = True
-            if not defer_read:
-                self.hash_file()
-                self.has_read_contents = True
+            if defer_read:
+                self.hashstr = self.notsethash
+            else:
+                self.read_file_contents()
 
             self.copy_by_copying = True
             self.has_real_hash = True
@@ -127,6 +130,51 @@ class FileHash(object):
 
         self.hash_safe = True
         return self
+
+    def read_file_contents(self):
+        if not self.is_file:
+            raise 
+
+        log.debug("Reading file '%s' contents", self.fullpath)
+        self.hash_file()
+        self.has_read_contents = True
+
+
+    def safe_to_skip(self, other):
+        '''
+        Determine if we are sufficiently similar to FileHandle object other
+        to avoid reading the file again.
+        '''
+        log.debug("'%s': skip check", self.fpath)
+        assert(self.fpath == other.fpath, "fpaths really should agree")
+        if self.uid != other.uid:
+            log.debug("uids differ, fail skip check")
+            return False
+        if self.gid != other.gid:
+            log.debug("gids differ, fail skip check")
+            return False
+        if self.mode != other.mode:
+            log.debug("modes differ, fail skip check")
+            return False
+        if self.size != other.size:
+            log.debug("sizes differ, fail skip check")
+            return False
+        if self.mtime != other.mtime:
+            log.debug("mtimes differ, fail skip check")
+            return False
+        log.debug("skip check pass")
+        return True
+
+
+    def inherit_attributes(self, other):
+        '''
+        Copy attributes from another FileHandle object, in an attempt to
+        save on IO. Don't copy stuff we don't need to.
+
+        '''
+        log.debug("inherit_attributes('%s'): grabbing hash", self.fpath)
+        self.hashstr = other.hashstr
+        self.has_read_contents = True
 
 
     @classmethod
