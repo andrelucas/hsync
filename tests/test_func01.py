@@ -69,7 +69,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	def rundiff(self, in_dir, out_dir=None, delete=True,
 				src_optlist=None, dst_optlist=None, web=False,
-				diff_optlist=None, run_diff=True):
+				diff_optlist=None, run_diff=True,
+				clnt_repeat=1):
 		'''
 		Set up copies of an existing tree (or existing trees), run hsync
 		and report on any differences.
@@ -109,28 +110,29 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			srcopt.extend(src_optlist)
 		self.assertTrue(hsync.main(srcopt))
 
-		in_url = in_tmp
-		port = None
-		if web:
-			in_url = 'http://127.0.0.1:%d/test/in_tmp' % (self.wport)
-			log.debug("Fetch URL: %s", in_url)
+		for n in range(1,clnt_repeat+1):
+			in_url = in_tmp
+			port = None
+			if web:
+				in_url = 'http://127.0.0.1:%d/test/in_tmp' % (self.wport)
+				log.debug("Fetch URL: %s", in_url)
 
-		#time.sleep(20) # XXX
-		dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_url, '-d']
-		if dst_optlist is not None:
-			dstopt.extend(dst_optlist)
-		self.assertTrue(hsync.main(dstopt))
+			#time.sleep(20) # XXX
+			dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_url, '-d']
+			if dst_optlist is not None:
+				dstopt.extend(dst_optlist)
+			self.assertTrue(hsync.main(dstopt))
 
-		#os.unlink(hashfile)
-		
-		if run_diff:
-			diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp]
-			if diff_optlist is not None:
-				diffopt.extend(diff_optlist)
-			ret = subprocess.call(diffopt)
-			# if ret != 0:
-			# 	subprocess.call("bash", shell=True)
-			self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
+			#os.unlink(hashfile)
+			
+			if run_diff:
+				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp]
+				if diff_optlist is not None:
+					diffopt.extend(diff_optlist)
+				ret = subprocess.call(diffopt)
+				# if ret != 0:
+				# 	subprocess.call("bash", shell=True)
+				self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
 
 		if delete:
 			shutil.rmtree(in_tmp)
@@ -266,6 +268,18 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		tardir = 'zlib-1.2.8'
 		subprocess.check_call(("tar xzf %s" % tarball).split())
 		self.rundiff(tardir, None, web=True)
+		shutil.rmtree(tardir)
+
+
+	def test_web_tarball_idempotent(self):
+		'''Unpack some tarballs, run a web server, diff and repeat.'''
+		# Repeat to catch my silly repeat-invocations bug.
+		
+		os.chdir(self.topdir)
+		tarball = 'zlib-1.2.8.tar.gz'
+		tardir = 'zlib-1.2.8'
+		subprocess.check_call(("tar xzf %s" % tarball).split())
+		self.rundiff(tardir, None, web=True, clnt_repeat=10)
 		shutil.rmtree(tardir)
 
 
