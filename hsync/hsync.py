@@ -737,8 +737,8 @@ def dest_side(opt, args):
         log.error("Failed to retrieve signature file from '%s", hashurl)
         return False  
 
-    strfile = hashfile_contents.splitlines()
-    src_hashlist = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
+    src_strfile = hashfile_contents.splitlines()
+    src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
 
     opt.source_url = _cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
@@ -752,8 +752,8 @@ def dest_side(opt, args):
         # Fetch the signature file.
         hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
                                                     short_name=opt.hash_file)
-        strfile = hashfile_contents.splitlines()
-        existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
+        dst_strfile = hashfile_contents.splitlines()
+        existing_hl = hashlist_from_stringlist(dst_strfile, opt, root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
     (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
