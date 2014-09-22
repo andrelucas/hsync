@@ -187,8 +187,8 @@ def sigfile_write(hashlist, abs_path, opts):
     log.debug("Writing hash file '%s'", abs_path)
     sigfile = open(abs_path, 'w')
     for fh in hashlist:
-        assert(fh.hashstr != fh.notsethash,
-            "Hash for '%s' should not be the 'not set' value", fh.fpath)
+        assert fh.hashstr != fh.notsethash, \
+            "Hash should not be the 'not set' value"
         print(fh.presentation_format(), file=sigfile)
     print("FINAL: %s" % (hash_of_hashlist(hashlist)), file=sigfile)
     sigfile.close()
