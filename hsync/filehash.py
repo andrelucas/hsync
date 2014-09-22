@@ -146,7 +146,7 @@ class FileHash(object):
         to avoid reading the file again.
         '''
         log.debug("'%s': skip check", self.fpath)
-        assert(self.fpath == other.fpath, "fpaths really should agree")
+        assert self.fpath == other.fpath, "fpaths really should agree"
         if self.uid != other.uid:
             log.debug("uids differ, fail skip check")
             return False

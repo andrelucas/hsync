@@ -50,6 +50,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
     '''
 
+    log.debug("hashlist_generate: srcpath %s source_mode %s", 
+                srcpath, source_mode)
     if os.path.exists(srcpath):
         if not os.path.isdir(srcpath):
             raise NonDirFoundAtDirLocationError(
@@ -60,7 +62,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
     # If we're the target, defer reading file contents until we're asked to
     # compare. That way, if we're trusting the mtime, we may not have to read
     # the file at all.
-    if source_mode:
+    if opts.always_checksum:
         defer_fs_read = False
     else:
         defer_fs_read = True
@@ -81,7 +83,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
         if source_mode:
             print("Scanning source filesystem%s" % (source_extramsg))
         else:
-            print("Comparing local filesystem to signature file")
+            print("Comparing local filesystem to signature file%s" %
+                    (source_extramsg))
 
     if opts.progress and source_mode:
         verb="Add"
@@ -92,7 +95,6 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
         if log.isEnabledFor(logging.DEBUG):
             logging.debug("os.walk: root %s dirs %s files %s", root, dirs, files)
-
         # See if the directory list can be pruned.
         if not opts.no_ignore_dirs:
             for dirname in dirs:
@@ -114,7 +116,6 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                     done_skip=True
             if done_skip:
                 log.debug("dirs now %s", dirs)
-
 
         # Handle directories.
         for n, dirname in enumerate(dirs, start=1):
@@ -160,6 +161,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                                             defer_read=defer_fs_read)
 
             if not opts.always_checksum and fh.is_file:
+                # Attempt to bypass the checksum, if the old HSYNC.SIG has it.
                 do_checksum = True
 
                 if lookup_existing is not None:
@@ -174,8 +176,11 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                     log.debug("'%s': fall back to reading file", fh.fpath)
                     fh.read_file_contents()
 
+            log.debug("'%s': Adding to hash list", fh.fpath)
+            assert fh.hashstr != fh.notsethash
             hashlist.append(fh)
 
+    log.debug("hashlist_generate: entries %d", len(hashlist))
     return hashlist
 
 
@@ -733,6 +738,7 @@ def dest_side(opt, args):
         return False  
 
     strfile = hashfile_contents.splitlines()
+    src_hashlist = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
 
     opt.source_url = _cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
@@ -748,8 +754,6 @@ def dest_side(opt, args):
                                                     short_name=opt.hash_file)
         strfile = hashfile_contents.splitlines()
         existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
-
-    src_hashlist = hashlist_from_stringlist(strfile, opt, root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
     (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
