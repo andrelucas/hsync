@@ -19,7 +19,6 @@ import sys
 import urllib2
 import urlparse
 
-from numformat import size
 from exceptions import *
 from filehash import *
 from idmapper import *
@@ -282,7 +281,7 @@ def fetch_needed(needed, source, opts):
     if not source.endswith('/'):
         source += "/"
 
-    for fh in needed:
+    for n, fh in enumerate(needed, start=1):
         if log.isEnabledFor(logging.DEBUG):
             if fh.is_dir:
                 log.debug("fetch_needed: dir %s", fh.fpath)
@@ -298,7 +297,8 @@ def fetch_needed(needed, source, opts):
             #     print("Get file: %s" % fh.fpath)
 
             # Fetch_contents will display progress information itself.
-            contents = fetch_contents(source_url, opts, for_filehash=fh)
+            contents = fetch_contents(source_url, opts, for_filehash=fh,
+                file_count_number=n, file_count_total=len(needed))
 
             if contents is None:
                 if opts.fail_on_errors:
@@ -357,7 +357,7 @@ def fetch_needed(needed, source, opts):
                 log.debug("Creating symlink '%s'->'%s'",
                             linkpath, fh.link_target)
                 if not opts.quiet:
-                    print("Create symlink %s -> %s" %
+                    print("L: (create) %s -> %s" %
                             (linkpath, fh.link_target))
                 os.symlink(fh.link_target, linkpath)
 
@@ -376,7 +376,7 @@ def fetch_needed(needed, source, opts):
                         log.debug("Moving symlink '%s'->'%s'",
                                      linkpath, dh.link_target)
                         if not opts.quiet:
-                            print("Move symlink %s -> %s" %
+                            print("L: (move) %s -> %s" %
                                     (linkpath, fh.link_target))                       
                         os.symlink(fh.link_target, linkpath)
 
@@ -405,7 +405,7 @@ def fetch_needed(needed, source, opts):
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
                 if not opts.quiet:
-                    print("Create dir: %s" % fh.fpath)
+                    print("D: %s" % fh.fpath)
                 os.mkdir(tgt_dir, fh.mode)
 
             # Dealing with a directory on the filesystem, not an fd - use the
@@ -474,7 +474,8 @@ def delete_not_needed(not_needed, target, opts):
 
 
 def fetch_contents(fpath, opts, root='', no_trim=False,
-                    for_filehash=None, short_name=None):
+                    for_filehash=None, short_name=None,
+                    file_count_number=None, file_count_total=None):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
 
@@ -485,6 +486,8 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
     if not no_trim and opts.trim_path and root:
         fullpath = os.path.join(opt.source_url, fpath)
+
+    log.debug("fetch_contents: %s", fullpath)
 
     fh = None
     if for_filehash is not None:
@@ -497,53 +500,25 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     elif fh is not None:
         fname = fh.fpath
 
-    log.debug("fetch_contents: %s", fullpath)
-    if not opts.progress:
-        print("Get file: %s" % (fname))
+    filecountstr = ''
+    if file_count_number is not None:
+        if file_count_total is not None:
+            pct = 100.0*file_count_number/file_count_total
+            filecountstr = ' [object %d/%d (%.0f%%)]' % (
+                                                file_count_number,
+                                                file_count_total,
+                                                pct)
+        else:
+            filecountstr = ' [file %d]' % file_count_number
+
+    pfx = "\rF: %s%s" % (fname, filecountstr)
+    print(pfx, end='')
 
     contents_array = []
+    progress = False
 
     try:
         url = urllib2.urlopen(fullpath)
-
-        size = 0
-        size_is_known = False
-        block_size = 256 * 1000 # 256KB.
-
-        if fh is not None:
-            size = fh.size
-
-        elif 'content-length' in url.info()['content-length']:
-            size = int(url.info()['content-length'])
-            size_is_known = True
-
-        bytes_read = 0
-        more_to_read = True
-        last_strlen = 0
-
-        while more_to_read:
-            log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
-            try:
-                new_bytes = url.read(block_size)
-                if not new_bytes:
-                    more_to_read = False
-                else:
-                    bytes_read += len(new_bytes)
-                    contents_array.append(new_bytes)
-                    if opts.progress:
-                        if size:
-                            pct = 100.0*bytes_read / size
-                            out = "%s (%.0f%% %d/%d)\r" % (fname, pct, bytes_read, size)
-                            print(out, end='')
-                            last_strlen = len(out)
-                        else:
-                            print("%s (%d/unknown) \r" % (fname, bytes_read), end='')
-
-            except urllib2.URLError, e:
-                log.warn("'%s' fetch failed: %s", str(e))
-                raise e
-
-
     except urllib2.HTTPError, e:
         if e.code == 404:
             resp = BaseHTTPRequestHandler.responses
@@ -552,9 +527,53 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
         else:
             raise(e)
 
+    size = 0
+    size_is_known = False
+    block_size = 256 * 1000 # 256KB.
+
+    if fh is not None:
+        size = fh.size
+        size_is_known = True
+
+    elif 'content-length' in url.info()['content-length']:
+        size = int(url.info()['content-length'])
+        size_is_known = True
+
+    if opts.progress and size:
+        progress = True
+
+    bytes_read = 0
+    more_to_read = True
+    last_strlen = 0
+
+    while more_to_read:
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
+        try:
+            new_bytes = url.read(block_size)
+            if not new_bytes:
+                more_to_read = False
+            else:
+                bytes_read += len(new_bytes)
+                contents_array.append(new_bytes)
+                if opts.progress:
+                    if size_is_known:
+                        pct = 100.0 * bytes_read / size
+                        print ("\r%s (progress %d/%d [%.0f%%])\r" % (pfx,
+                                                bytes_read, size, pct),
+                                end='')
+                    else:
+                        print("\r%s (progress %d/unknown)" % (pfx, bytes_read),
+                                end='')
+
+        except urllib2.URLError, e:
+            log.warn("'%s' fetch failed: %s", str(e))
+            raise e
+
+
     contents = ''.join(contents_array)
-    if opts.progress:
-        print('')
+
+    print('')
 
     return contents
 
@@ -670,6 +689,10 @@ def main(cmdargs):
     # As soon as logging is configured, say what we're doing.
     if log.isEnabledFor(logging.DEBUG):
         log.debug("main: args %s", cmdargs)
+
+    if opt.progress:
+        log.debug("Setting stdout to unbuffered")
+        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     if opt.source_dir and opt.dest_dir:
         log.error("Send-side and receive-side options can't be mixed")

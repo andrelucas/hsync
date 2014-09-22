@@ -13,6 +13,8 @@ setup(
         license = 'BSD',
         packages = [ 'hsync', ],
 
+        requires = [ 'urlgrabber', ],
+
         entry_points={
             'console_scripts': [
                 'hsync = hsync.hsync:csmain',
