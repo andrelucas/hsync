@@ -583,7 +583,6 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
             log.warn("'%s' fetch failed: %s", str(e))
             raise e
 
-
     print('')
 
     return outfile
@@ -601,7 +600,136 @@ def _cano_url(url, slash=False):
     return url
 
 
-def main(cmdargs):
+def source_side(opt, args):
+
+    hashlist = hashlist_generate(opt.source_dir, opt)
+    if hashlist is not None:
+
+        abs_hashfile = None
+        
+        if opt.signature_url:
+            hashurl = _cano_url(opt.signature_url)
+            log.debug("Explicit signature URL '%s'", hashurl)
+            up = urlparse.urlparse(hashurl)
+            if up.scheme != 'file':
+                raise URLMustBeOfTypeFileError(
+                    "Signature URL '%s' must be a local file", hashurl)
+            abs_hashfile = up.path
+            log.debug("Explicit signature file '%s'", abs_hashfile)
+
+        else:
+            hashfile = 'HSYNC.SIG'
+            if opt.hash_file:
+                hashfile = opt.hash_file
+
+            abs_hashfile = os.path.join(opt.source_dir, hashfile)
+            log.debug("Synthesised hash file location: '%s'", abs_hashfile)
+
+        if not sigfile_write(hashlist, abs_hashfile, opt):
+            log.error("Failed to write signature file '%s'",
+                os.path.join(opt.source_dir, opt.hash_file))
+            return False
+        
+        return True
+
+    else:
+        log.error("Send-side generate failed")
+        return False
+
+
+def dest_side(opt, args):
+    if opt.source_url is None:
+        log.error("-u/--source-url must be defined for -D/--dest-dir mode")
+        return False
+
+    if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
+        log.error("HTTP auth type must be one of 'digest' or 'basic'")
+        return False
+
+    if opt.http_user:
+        log.debug("Configuring HTTP authentication")
+        if not opt.http_pass:
+            log.error("HTTP proxy password must be specified")
+
+        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        pwmgr.add_password(None, opt.source_url,
+                            opt.http_user, opt.http_pass)
+        auth_opener = None
+        if opt.http_auth_type == 'digest':
+            log.debug("Configuring digest authentication")
+            auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
+
+        else:
+            log.debug("Configuring basic authentication")
+            auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
+
+        urllib2.install_opener(auth_opener)
+
+    if opt.proxy_url:
+        log.debug("Configuring proxy")
+        raise Exception("Explicit proxy not yet implemented")
+        
+    hashurl = None
+    if opt.signature_url:
+        hashurl = _cano_url(opt.signature_url)
+        log.debug("Explicit signature URL '%s'", hashurl)
+
+    else:
+        hashurl = _cano_url(opt.source_url, slash=True) + opt.hash_file
+        log.debug("Synthesised signature URL '%s'", hashurl)
+
+    # Fetch the signature file.
+    hashfile_contents = fetch_contents(hashurl, opt, short_name=opt.hash_file)
+
+    if hashfile_contents is None:
+        # We're not coming back from this.
+        log.error("Failed to retrieve signature file from '%s", hashurl)
+        return False  
+
+    strfile = hashfile_contents.splitlines()
+
+    opt.source_url = _cano_url(opt.source_url, slash=True)
+    log.debug("Source url '%s", opt.source_url)
+
+    src_hashlist = hashlist_from_stringlist(strfile, opt)
+
+    # Calculate the differences to the local filesystem.
+    (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
+                                                    src_hashlist, opt)
+
+    if opt.verify_only:
+        # Give a report if we're verbose.
+        if opt.verbose:
+            for fh in needed:
+                print("Needed: %s" % fh.fpath)
+            for fh in not_needed:
+                print("Needs delete: %s" % fh.path)
+
+        if needed or not_needed:
+            return False
+        else:
+            # True ('verified') means 'nothing to do'.
+            return True
+    
+    else:
+        if (not fetch_needed(needed, opt.source_url, opt) or 
+            not delete_not_needed(not_needed, opt.dest_dir, opt)):
+            log.error("Sync failed")
+            return False
+
+        if not opt.no_write_hashfile and dst_hashlist is not None:
+            # FFR may need to put this elsewhere.
+            abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
+            if not sigfile_write(dst_hashlist, abs_hashfile, opt):
+                log.error("Failed to write signature file '%s'",
+                            os.path.join(opt.source_dir, opt.hash_file))
+            return False
+
+        return True
+
+
+def getopts(cmdargs):
+
     p = optparse.OptionParser()
 
     send = optparse.OptionGroup(p, "Send-side options")
@@ -681,6 +809,13 @@ def main(cmdargs):
 
     (opt, args) = p.parse_args(args=cmdargs)
 
+    return (opt, args)
+
+
+def main(cmdargs):
+
+    (opt, args) = getopts(cmdargs)
+
     if opt.version:
         from _version import __version__
         print("Hsync version %s" % __version__)
@@ -721,137 +856,15 @@ def main(cmdargs):
 
     # Send-side.
     if opt.source_dir:
-
-        hashlist = hashlist_generate(opt.source_dir, opt)
-        if hashlist is not None:
-
-            abs_hashfile = None
-            
-            if opt.signature_url:
-                hashurl = _cano_url(opt.signature_url)
-                log.debug("Explicit signature URL '%s'", hashurl)
-                up = urlparse.urlparse(hashurl)
-                if up.scheme != 'file':
-                    raise URLMustBeOfTypeFileError(
-                        "Signature URL '%s' must be a local file", hashurl)
-                abs_hashfile = up.path
-                log.debug("Explicit signature file '%s'", abs_hashfile)
-
-            else:
-                hashfile = 'HSYNC.SIG'
-                if opt.hash_file:
-                    hashfile = opt.hash_file
-
-                abs_hashfile = os.path.join(opt.source_dir, hashfile)
-                log.debug("Synthesised hash file location: '%s'", abs_hashfile)
-
-            if not sigfile_write(hashlist, abs_hashfile, opt):
-                log.error("Failed to write signature file '%s'",
-                    os.path.join(opt.source_dir, opt.hash_file))
-                return False
-            
-            return True
-
-        else:
-            log.error("Send-side generate failed")
-            return False
+        return source_side(opt, args)
 
     # Receive-side.
     elif opt.dest_dir:
-
-        if opt.source_url is None:
-            log.error("-u/--source-url must be defined for -D/--dest-dir mode")
-            return False
-
-        if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
-            log.error("HTTP auth type must be one of 'digest' or 'basic'")
-            return False
-
-        if opt.http_user:
-            log.debug("Configuring HTTP authentication")
-            if not opt.http_pass:
-                log.error("HTTP proxy password must be specified")
-
-            pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-            pwmgr.add_password(None, opt.source_url,
-                                opt.http_user, opt.http_pass)
-            auth_opener = None
-            if opt.http_auth_type == 'digest':
-                log.debug("Configuring digest authentication")
-                auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
-
-            else:
-                log.debug("Configuring basic authentication")
-                auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
-
-            urllib2.install_opener(auth_opener)
-
-        if opt.proxy_url:
-            log.debug("Configuring proxy")
-            raise Exception("Explicit proxy not yet implemented")
-            
-
-        hashurl = None
-        if opt.signature_url:
-            hashurl = _cano_url(opt.signature_url)
-            log.debug("Explicit signature URL '%s'", hashurl)
-
-        else:
-            hashurl = _cano_url(opt.source_url, slash=True) + opt.hash_file
-            log.debug("Synthesised signature URL '%s'", hashurl)
-
-        # Fetch the signature file.
-        hashfile_contents = fetch_contents(hashurl, opt, short_name=opt.hash_file)
-
-        if hashfile_contents is None:
-            # We're not coming back from this.
-            log.error("Failed to retrieve signature file from '%s", hashurl)
-            return False  
-
-        strfile = hashfile_contents.splitlines()
-
-        opt.source_url = _cano_url(opt.source_url, slash=True)
-        log.debug("Source url '%s", opt.source_url)
-
-        src_hashlist = hashlist_from_stringlist(strfile, opt)
-
-        # Calculate the differences to the local filesystem.
-        (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
-                                                        src_hashlist, opt)
-
-
-        if opt.verify_only:
-            # Give a report if we're verbose.
-            if opt.verbose:
-                for fh in needed:
-                    print("Needed: %s" % fh.fpath)
-                for fh in not_needed:
-                    print("Needs delete: %s" % fh.path)
-
-            if needed or not_needed:
-                return False
-            else:
-                # True ('verified') means 'nothing to do'.
-                return True
-        
-        else:
-            if (not fetch_needed(needed, opt.source_url, opt) or 
-                not delete_not_needed(not_needed, opt.dest_dir, opt)):
-                log.error("Sync failed")
-                return False
-
-            if not opt.no_write_hashfile and dst_hashlist is not None:
-                # FFR may need to put this elsewhere.
-                abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
-                if not sigfile_write(dst_hashlist, abs_hashfile, opt):
-                    log.error("Failed to write signature file '%s'",
-                                os.path.join(opt.source_dir, opt.hash_file))
-                return False
-
-            return True
-
+        return dest_side(opt, args)
+ 
     else:
-        print("Nothing to do!")
+        print("You gave me nothing to do! Try '%s --help'." % 
+            os.path.basename(sys.argv[0]))
         return True
 
 
