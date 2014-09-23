@@ -17,14 +17,11 @@ Bugs
 
 Features
 
+- Add a lockfile
+
 - Check the HSYNC.SIG FINAL checksum
 
 - Specify default user and group
-
-- Incremental check mode
-  - Client side done - mtime match -> no read contents (switchable)
-  - Server side done - mtime match -> no read
-  - Could do subtree culling, if mtime is reliable over nfs
 
 - Better tests
   - Unsupported file types (will currently just die)
