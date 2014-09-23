@@ -184,19 +184,39 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
     return hashlist
 
 
-def sigfile_write(hashlist, abs_path, opts):
+def sigfile_write(hashlist, abs_path, opts,
+                    use_tmp=False, verb='Generating'):
 
     if not opts.quiet:
-        print("Generating signature file %s" % abs_path)
+        print("%s signature file %s" % (verb, abs_path))
 
-    log.debug("Writing hash file '%s'", abs_path)
-    sigfile = open(abs_path, 'w')
+    if use_tmp:
+        r = SystemRandom()
+        abs_path_tmp = abs_path + ".%08x" % r.randint(0, 0xffffffff)
+        log.debug("Opportunistic write: Will save hashfile to %s",
+                    abs_path_tmp)
+
+        log.debug("Writing temporary hash file '%s'", abs_path_tmp)
+        sigfile = open(abs_path_tmp, 'w')
+
+    else:
+        log.debug("Writing hash file '%s'", abs_path)
+        sigfile = open(abs_path, 'w')
+
     for fh in hashlist:
         assert fh.hashstr != fh.notsethash, \
             "Hash should not be the 'not set' value"
         print(fh.presentation_format(), file=sigfile)
     print("FINAL: %s" % (hash_of_hashlist(hashlist)), file=sigfile)
     sigfile.close()
+
+    if use_tmp:
+        log.debug("Moving hashfile into place: '%s' -> '%s'",
+                    abs_path_tmp, abs_path)
+        if os.rename(abs_path_tmp, abs_path) == -1:
+            raise OSOperationFailedError("Failed to rename '%s' to '%s'",
+                                        abs_path_tmp, abs_path)
+
     return True
 
 
@@ -242,7 +262,8 @@ def hashlist_from_stringlist(strfile, opts, root=None):
     return hashlist
 
 
-def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None):
+def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
+                    opportunistic_write=False, opwrite_path=None):
     '''
     Check the dstpath against the provided hashlist.
 
@@ -258,6 +279,12 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None):
     # Take the simple road. Generate a hashlist for the destination.
     dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False,
                                         existing_hashlist=existing_hashlist)
+
+    if opportunistic_write:
+        assert opwrite_path is not None
+        sigfile_write(dst_hashlist, opwrite_path, opts,
+                        use_tmp=True, verb='Caching scanned')
+
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
     direx = set()
@@ -306,7 +333,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None):
         if not fpath in src_fdict:
             log.debug("%s: not found in source", fpath)
             not_needed.append(fh)
-        
+
     return (needed, not_needed, dst_hashlist)
 
 
@@ -362,7 +389,7 @@ def fetch_needed(needed, source, opts):
                     continue
 
                 tgt_file = os.path.join(opts.dest_dir, fh.fpath)
-                tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xfffffffff)
+                tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xffffffff)
                 log.debug("Will write to '%s'", tgt_file_rnd)
                 if os.path.exists(tgt_file):
                     if os.path.islink(tgt_file):
@@ -674,7 +701,7 @@ def source_side(opt, args):
     hashlist = hashlist_generate(opt.source_dir, opt, existing_hashlist=existing_hl)
     if hashlist is not None:
 
-        if not sigfile_write(hashlist, abs_hashfile, opt):
+        if not sigfile_write(hashlist, abs_hashfile, opt, use_tmp=True):
             log.error("Failed to write signature file '%s'",
                 os.path.join(opt.source_dir, opt.hash_file))
             return False
@@ -745,7 +772,11 @@ def dest_side(opt, args):
 
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     existing_hl = None
-    if not opt.always_checksum and os.path.exists(abs_hashfile):
+
+    # Make a note of whether or not an old hashfile exists. 
+    old_hashfile_exists = os.path.exists(abs_hashfile)
+
+    if not opt.always_checksum and old_hashfile_exists:
         if not opt.quiet:
             print("Reading existing hashfile")
 
@@ -756,9 +787,14 @@ def dest_side(opt, args):
         existing_hl = hashlist_from_stringlist(dst_strfile, opt, root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
+    # 
+    # Since we've just done a scan, write the results to the disk - then, if
+    # Something goes wrong, at least we've saved the scan results.
     (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
                                             src_hashlist, opt,
-                                            existing_hashlist=existing_hl)
+                                            existing_hashlist=existing_hl,
+                                            opportunistic_write=True,
+                                            opwrite_path=abs_hashfile)
 
     if opt.verify_only:
         # Give a report if we're verbose.
@@ -781,7 +817,8 @@ def dest_side(opt, args):
             return False
 
         if not opt.no_write_hashfile and dst_hashlist is not None:
-            if not sigfile_write(dst_hashlist, abs_hashfile, opt):
+            if not sigfile_write(dst_hashlist, abs_hashfile, opt,
+                                        use_tmp=True, verb='Writing'):
                 log.error("Failed to write signature file '%s'",
                             os.path.join(opt.source_dir, opt.hash_file))
             return False
