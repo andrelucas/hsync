@@ -833,8 +833,6 @@ def getopts(cmdargs):
     send = optparse.OptionGroup(p, "Send-side options")
     send.add_option("-S", "--source-dir",
         help="Specify the source directory")
-    send.add_option("--no-trust-timestamps",
-        help="Don't use timestamps to avoid re-scanning files")
     p.add_option_group(send)
 
     recv = optparse.OptionGroup(p, "Receive-side options")
