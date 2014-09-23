@@ -638,7 +638,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                                                 bytes_read, size, pct),
                                 end='')
                     else:
-                        print("\r%s (progress %d/unknown)" % (pfx, bytes_read),
+                        print("\r%s (download %d/unknown)" % (pfx, bytes_read),
                                 end='')
 
         except urllib2.URLError, e:
