@@ -43,7 +43,7 @@ class UidGidMapper(object):
             except KeyError:
                 if not uid in self.missing_uid_warned:
                     log.warn("No name found for uid %d, setting "
-                        "default username", uid)
+                        "default username %s", uid, self.default_name)
                     self.missing_uid_warned.add(uid)
                     self.uid_to_name[uid] = self.default_name
                     return self.default_name
@@ -65,7 +65,7 @@ class UidGidMapper(object):
             except KeyError:
                 if not gid in self.missing_gid_warned:
                     log.warn("No group found for gid %d, setting "
-                        "default group", gid)
+                        "default group %s", gid, self.default_group)
                     self.missing_gid_warned.add(gid)
                     self.gid_to_group[gid] = self.default_group
                     return self.default_group
@@ -83,7 +83,7 @@ class UidGidMapper(object):
             except KeyError:
                 if not name in self.missing_name_warned:
                     log.warn("No uid found for name %s, setting "
-                        "default uid", name)
+                        "default uid %d", name, self.default_uid)
                     self.missing_name_warned.add(name)
                     self.name_to_uid[name] = self.default_uid
                     return self.default_uid
@@ -99,7 +99,7 @@ class UidGidMapper(object):
             except KeyError:
                 if not group in self.missing_group_warned:
                     log.warn("No gid found for group %s, setting "
-                        "default gid", group)
+                        "default gid %d", group, self.default_gid)
                     self.missing_group_warned.add(group)
                     self.group_to_gid[group] = self.default_gid
                     return self.default_gid
