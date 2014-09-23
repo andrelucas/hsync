@@ -152,7 +152,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
             log.debug("Add file: %s", fpath)
 
             if opts.progress:
-                print("F: %s dir %s file %s (file-in-dir %d/%d)" %
+                print("F: %s [dir %s] file %s (file-in-dir %d/%d)" %
                                 (verb, root, filename, n, len(files)))
             elif opts.verbose:
                 print("%s file: %s" % (verb, fpath))
