@@ -60,6 +60,8 @@ class UidGidMapper(object):
         if not gid in self.gid_to_group:
             try:
                 name = grp.getgrgid(gid).gr_name
+                self.gid_to_group[gid] = name
+                self.group_to_gid[name] = gid
             except KeyError:
                 if not gid in self.missing_gid_warned:
                     log.warn("No group found for gid %d, setting "
@@ -68,15 +70,16 @@ class UidGidMapper(object):
                     self.gid_to_group[gid] = self.default_group
                     return self.default_group
 
-            self.gid_to_group[gid] = name
-            self.group_to_gid[name] = gid
         return self.gid_to_group[gid]
 
 
     def get_uid_for_name(self, name):
         if not name is self.name_to_uid:
+            uid = None
             try:
                 uid = int(pwd.getpwnam(name).pw_uid)
+                self.name_to_uid[name] = int(uid)
+                self.uid_to_name[uid] = name
             except KeyError:
                 if not name in self.missing_name_warned:
                     log.warn("No uid found for name %s, setting "
@@ -85,14 +88,12 @@ class UidGidMapper(object):
                     self.name_to_uid[name] = self.default_uid
                     return self.default_uid
 
-            self.name_to_uid[name] = int(uid)
-            self.uid_to_name[uid] = name
-
         return self.name_to_uid[name]
 
 
     def get_gid_for_group(self, group):
         if not group in self.group_to_gid:
+            gid = None
             try:
                 gid = int(grp.getgrnam(group).gr_gid)
             except KeyError:
