@@ -361,6 +361,13 @@ def fetch_needed(needed, source, opts):
     if not source.endswith('/'):
         source += "/"
 
+    contents_differ_count = 0
+    differing_file_index = 0
+
+    for fh in needed:
+        if fh.dest_missing or fh.contents_differ:
+            contents_differ_count += 1
+
     for n, fh in enumerate(needed, start=1):
         if log.isEnabledFor(logging.DEBUG):
             if fh.is_dir:
@@ -370,6 +377,7 @@ def fetch_needed(needed, source, opts):
 
         
         source_url = urlparse.urljoin(source, fh.fpath)
+
 
         if fh.is_file:
             
@@ -381,12 +389,14 @@ def fetch_needed(needed, source, opts):
 
             if fh.dest_missing or fh.contents_differ:
 
+                differing_file_index += 1
                 log.debug("Fetching: '%s' dest_missing %s contents_differ %s",
                     fh.fpath, fh.dest_missing, fh.contents_differ)
 
                 # Fetch_contents will display progress information itself.
                 contents = fetch_contents(source_url, opts, for_filehash=fh,
-                    file_count_number=n, file_count_total=len(needed))
+                    file_count_number=differing_file_index,
+                    file_count_total=contents_differ_count)
 
                 if contents is None:
                     if opts.fail_on_errors:

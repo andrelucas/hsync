@@ -231,6 +231,18 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 										munge_output=change_f1_2))
 
 
+	def test_local_verify5(self):
+		'''Contents append verify check'''
+		def change_f1_1(out_tmp):
+			'''Contents change'''
+			fh = open(os.path.join(out_tmp, 'f1'), 'w+')
+			print("hello2", file=fh)
+			fh.close()
+
+		self.assertFalse(self.runverify('t_verify5_in', None,
+										munge_output=change_f1_1))
+
+
 	def _checklink(self, linkpath, target):
 		lstat = os.lstat(linkpath)
 		self.assertTrue(stat.S_ISLNK(lstat.st_mode), "Symlink created")

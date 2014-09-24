@@ -11,6 +11,9 @@ Bugs
 
 - Should really sort directory and file names from os.walk()
 
+- After changes (esp.check metadata) are made, the HSYNC.SIG entry needs updated
+  so redundant re-checks on the next run are eliminated.
+  (e.g. change length of file, fix but HSYNC.SIG entry may have old values...)
 
 Features
 
