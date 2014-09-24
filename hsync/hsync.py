@@ -481,7 +481,7 @@ def fetch_needed(needed, source, opts):
 
                 if filestat.st_mtime != fh.mtime:
                     if not opts.quiet:
-                        print("(mtime %d -> %d)" % (filestat.st_mtime, fh.mtime), end='')
+                        print(" (mtime %d -> %d)" % (filestat.st_mtime, fh.mtime), end='')
                     os.utime(tgt_file, (fh.mtime, fh.mtime))
 
                 if not opts.quiet:
