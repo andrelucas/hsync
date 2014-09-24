@@ -595,7 +595,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
     try:
         url = urllib2.urlopen(fullpath)
-    except urllib2.HTTPError, e:
+    except urllib2.HTTPError as e:
         if e.code == 404:
             resp = BaseHTTPRequestHandler.responses
             log.warn("Failed to retrieve '%s': %s", fullpath, resp[404][0])
@@ -645,7 +645,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                                                 bytes_to_iec(bytes_read)),
                                 end='')
 
-        except urllib2.URLError, e:
+        except urllib2.URLError as e:
             log.warn("'%s' fetch failed: %s", str(e))
             raise e
 
