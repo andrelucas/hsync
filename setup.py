@@ -21,6 +21,6 @@ setup(
             ],
         },
 
-	use_2to3 = True,
+        use_2to3 = True,
 )
 
