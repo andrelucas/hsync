@@ -19,6 +19,8 @@ setup(
             'console_scripts': [
                 'hsync = hsync.hsync:csmain',
             ],
-    },
+        },
+
+	use_2to3 = True,
 )
 

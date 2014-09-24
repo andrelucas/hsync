@@ -221,7 +221,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		'''Mode change verify and toggle'''
 		def change_f1_2(out_tmp):
 			'''Mode change'''
-			os.chmod(os.path.join(out_tmp, 'f1'), 0755)
+			os.chmod(os.path.join(out_tmp, 'f1'), 0o755)
 		# Should fail.
 		self.assertFalse(self.runverify('t_verify4_in', None,
 										munge_output=change_f1_2))
