@@ -11,13 +11,12 @@ Bugs
 
 - Should really sort directory and file names from os.walk()
 
-- If a file is not fully copied, say so; don't depend on the checksum to catch
-   it as that's a misleading error message
-
 
 Features
 
 - Add a lockfile
+
+- Truncate long paths
 
 - Check the HSYNC.SIG FINAL checksum
 
