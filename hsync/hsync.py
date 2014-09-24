@@ -23,7 +23,7 @@ import urlparse
 from exceptions import *
 from filehash import *
 from idmapper import *
-from numformat import bytes_to_iec
+from numformat import IECUnitConverter as IEC
 
 
 log = logging.getLogger()
@@ -615,12 +615,30 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
         size = int(url.info()['content-length'])
         size_is_known = True
 
-    if opts.progress and size:
+    if opts.progress and size_is_known:
         progress = True
+        sizestr = IEC.bytes_to_unit(size)
 
     bytes_read = 0
     more_to_read = True
     last_strlen = 0
+
+    def progstr():
+        if size_is_known:
+            pct = 100.0 * bytes_read / size
+            print ("\r%s (progress %s/%s [%.0f%%])\r" % (pfx,
+                                IEC.bytes_to_unit(bytes_read),
+                                sizestr,
+                                pct),
+                    end='')
+        else:
+            print("\r%s (download %s/unknown)" % (pfx,
+                                IEC.bytes_to_unit(bytes_read)),
+                    end='')
+
+
+    if opts.progress:
+        progstr()
 
     while more_to_read:
         if log.isEnabledFor(logging.DEBUG):
@@ -633,17 +651,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                 bytes_read += len(new_bytes)
                 outfile += new_bytes
                 if opts.progress:
-                    if size_is_known:
-                        pct = 100.0 * bytes_read / size
-                        print ("\r%s (progress %s/%s [%.0f%%])\r" % (pfx,
-                                                bytes_to_iec(bytes_read),
-                                                bytes_to_iec(size),
-                                                pct),
-                                end='')
-                    else:
-                        print("\r%s (download %s/unknown)" % (pfx,
-                                                bytes_to_iec(bytes_read)),
-                                end='')
+                    progstr()
 
         except urllib2.URLError as e:
             log.warn("'%s' fetch failed: %s", str(e))
