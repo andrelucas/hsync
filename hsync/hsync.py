@@ -424,7 +424,7 @@ def fetch_needed(needed, source, opts):
                     if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
                         log.debug("Changing file %s ownership to %s/%s",
                                     tgt_file_rnd, fh.user, fh.group)
-                        if os.chown(tgt, expect_uid, expect_gid) == -1:
+                        if os.fchown(tgt, expect_uid, expect_gid) == -1:
                             log.warn("Failed to fchown '%s' to user %s group %s",
                                     tgt_file_rnd, fh.user, fh.group)
 
