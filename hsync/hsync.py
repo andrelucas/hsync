@@ -96,6 +96,9 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
         if log.isEnabledFor(logging.DEBUG):
             logging.debug("os.walk: root %s dirs %s files %s", root, dirs, files)
+
+        dirs.sort()
+
         # See if the directory list can be pruned.
         if not opts.no_ignore_dirs:
             for dirname in dirs:
@@ -129,6 +132,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
             elif opts.verbose:
                 print("%s dir: %s" % (verb, fpath))
             hashlist.append(fh)
+
+        files.sort()
             
         for n, filename in enumerate(files, start=1):
 
