@@ -894,7 +894,7 @@ def getopts(cmdargs):
             "which has the effect of rendering it invisible (and deletable!)"
             "on the client side. On the client side, it prevents processing "
             "of the path.")
-    meta.add_option("--fetch-blocksize", default=256*1000,
+    meta.add_option("--fetch-blocksize", default=32*1000,
         help="Specify the number of bytes to retrieve at a time "
             "[default: %default]")
 
