@@ -147,15 +147,15 @@ class FileHash(object):
         '''
         log.debug("'%s': skip check", self.fpath)
         assert self.fpath == other.fpath, "fpaths really should agree"
-        if self.uid != other.uid:
-            log.debug("uids differ, fail skip check")
-            return False
-        if self.gid != other.gid:
-            log.debug("gids differ, fail skip check")
-            return False
-        if self.mode != other.mode:
-            log.debug("modes differ, fail skip check")
-            return False
+        # if self.uid != other.uid:
+        #     log.debug("uids differ, fail skip check")
+        #     return False
+        # if self.gid != other.gid:
+        #     log.debug("gids differ, fail skip check")
+        #     return False
+        # if self.mode != other.mode:
+        #     log.debug("modes differ, fail skip check")
+        #     return False
         if self.size != other.size:
             log.debug("sizes differ, fail skip check")
             return False
@@ -209,6 +209,8 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
+        self.dest_missing = True # Safe default.
+        self.contents_differ = True # Safe default.
         self.has_real_hash = False
 
         self.is_dir = self.is_link = self.is_file = False
@@ -338,6 +340,14 @@ class FileHash(object):
         otherwise False.
         '''
 
+        # Since we're comparing, let's assume the remote at least has the file.
+        self.dest_missing = False
+
+        differ_metadata = False
+        differ_contents = False
+        differ_mtime = False
+        mtime_skip = False
+
         if log.isEnabledFor(logging.DEBUG):
             log.debug("compare: self %s other %s ignore_uid_gid %s "
                 "ignore_mode %s trust_mtime %s",
@@ -346,44 +356,53 @@ class FileHash(object):
 
         if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
-            return False
+            contents_differ = True
 
         if not ignore_mode:
             if self.mode != other.mode:
                 log.debug("Object modes differ")
-                return False
+                differ_metadata = True
 
         if not ignore_uid_gid:
             if self.uid != other.uid:
                 log.debug("Object UIDs differ")
-                return False
+                differ_metadata = True
             if self.gid != other.gid:
                 log.debug("Object GIDs differ")
-                return False
+                differ_metadata = True
 
         # If enabled, check the mtime and if it matches, consider ourselves done.
         if trust_mtime:
             if self.mtime == other.mtime:
                 log.debug("'%s': mtime match, assuming ok", self.fpath)
-                return True
+                mtime_skip = True
             else:
                 log.debug("'%s': mtime mismatch, will check", self.fpath)
+                differ_mtime = True
 
-        # If we're a local file, we may be able to save some time.
-        if self.is_local_file:
-            if self.defer_read and not self.has_contents():
-                self.hash_file()
-                self.has_read_contents = True
+        if not mtime_skip:
+            # If we're a local file, we may be able to save some time.
+            if self.is_local_file:
+                if self.defer_read and not self.has_contents():
+                    self.hash_file()
+                    self.has_read_contents = True
 
-        if self.can_compare(other):
-            if not self.compare_contents(other):
-                log.debug("Hash verification failed")
-                return False
-            else:
-                log.debug("Hash verified")
+            if self.can_compare(other):
+                if not self.compare_contents(other):
+                    log.debug("Hash verification failed")
+                    differ_contents = True
+                else:
+                    log.debug("Hash verified")
 
-        log.debug("'%s': Identity check pass", self.fpath)
-        return True
+        log.debug("'%s': Identity check: contents %s metadata %s mtime %s",
+            self.fpath, differ_contents, differ_metadata, differ_mtime)
+
+        self.contents_differ = differ_contents
+        self.metadata_differs = differ_metadata
+        self.mtime_differs = differ_mtime
+
+        differs = differ_contents or differ_metadata or differ_mtime
+        return not differs
 
 
     def normalise_symlink(self, root):

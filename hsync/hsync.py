@@ -332,6 +332,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         else:
             log.debug("%s: needed", fpath)
+            fh.dest_missing = True
             needed.append(fh)
                 
     not_needed = []
@@ -375,58 +376,115 @@ def fetch_needed(needed, source, opts):
             # if not opts.quiet:
             #     print("Get file: %s" % fh.fpath)
 
-            # Fetch_contents will display progress information itself.
-            contents = fetch_contents(source_url, opts, for_filehash=fh,
-                file_count_number=n, file_count_total=len(needed))
+            tgt_file = os.path.join(opts.dest_dir, fh.fpath)
+            tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xffffffff)
 
-            if contents is None:
-                if opts.fail_on_errors:
-                    raise ContentsFetchFailedException(
-                        "Failed to fetch '%s'" % source_url)
-                    
-            else:
-                chk = hashlib.sha256()
-                log.debug("Hashing contents")
-                chk.update(contents)
-                log.debug("Contents hash done (%s)", chk.hexdigest())
-                if chk.hexdigest() != fh.hashstr:
-                    log.warn("File '%s' failed checksum verification!", fh.fpath)
-                    errorCount += 1
-                    continue
+            if fh.dest_missing or fh.contents_differ:
 
-                tgt_file = os.path.join(opts.dest_dir, fh.fpath)
-                tgt_file_rnd = tgt_file + ".%08x" % r.randint(0, 0xffffffff)
-                log.debug("Will write to '%s'", tgt_file_rnd)
-                if os.path.exists(tgt_file):
-                    if os.path.islink(tgt_file):
-                        raise ParanoiaError(
-                            "Not overwriting existing symlink '%s' with file", tgt_file)
-                    if os.path.isdir(tgt_file):
-                        raise DirWhereFileExpectedError(
-                            "Directory found where file expected at '%s'", tgt_file)
+                log.debug("Fetching: '%s' dest_missing %s contents_differ %s",
+                    fh.fpath, fh.dest_missing, fh.contents_differ)
 
-                # Dealing with file descriptors, use os.f*() variants.
-                tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
-                if tgt == -1:
-                    raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
+                # Fetch_contents will display progress information itself.
+                contents = fetch_contents(source_url, opts, for_filehash=fh,
+                    file_count_number=n, file_count_total=len(needed))
+
+                if contents is None:
+                    if opts.fail_on_errors:
+                        raise ContentsFetchFailedException(
+                            "Failed to fetch '%s'" % source_url)
+                        
+                else:
+                    chk = hashlib.sha256()
+                    log.debug("Hashing contents")
+                    chk.update(contents)
+                    log.debug("Contents hash done (%s)", chk.hexdigest())
+                    if chk.hexdigest() != fh.hashstr:
+                        log.warn("File '%s' failed checksum verification!", fh.fpath)
+                        errorCount += 1
+                        continue
+
+                    log.debug("Will write to '%s'", tgt_file_rnd)
+                    if os.path.exists(tgt_file):
+                        if os.path.islink(tgt_file):
+                            raise ParanoiaError(
+                                "Not overwriting existing symlink '%s' with file", tgt_file)
+                        if os.path.isdir(tgt_file):
+                            raise DirWhereFileExpectedError(
+                                "Directory found where file expected at '%s'", tgt_file)
+
+                    # Dealing with file descriptors, use os.f*() variants.
+                    tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
+                    if tgt == -1:
+                        raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
+
+                    expect_uid = mapper.get_uid_for_name(fh.user)
+                    expect_gid = mapper.get_gid_for_group(fh.group)
+
+                    filestat = os.stat(tgt_file_rnd)
+                    if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                        log.debug("Changing file %s ownership to %s/%s",
+                                    tgt_file_rnd, fh.user, fh.group)
+                        if os.chown(tgt, expect_uid, expect_gid) == -1:
+                            log.warn("Failed to fchown '%s' to user %s group %s",
+                                    tgt_file_rnd, fh.user, fh.group)
+
+                    os.write(tgt, contents)
+                    os.close(tgt)
+                    log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
+                    if os.rename(tgt_file_rnd, tgt_file) == -1:
+                        raise OSOperationFailedError("Failed to rename '%s' to '%s'",
+                            tgt_file_rnd, tgt_file)
+
+                    os.utime(tgt_file, (fh.mtime, fh.mtime))
+
+
+            elif fh.metadata_differs:
+
+                log.debug("'%s': metadata differs", fh.fpath)
 
                 expect_uid = mapper.get_uid_for_name(fh.user)
                 expect_gid = mapper.get_gid_for_group(fh.group)
 
-                filestat = os.stat(tgt_file_rnd)
-                if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
-                    log.debug("Changing file %s ownership to %s/%s",
-                                tgt_file_rnd, fh.user, fh.group)
-                    if os.fchown(tgt, expect_uid, expect_gid) == -1:
-                        log.warn("Failed to fchown '%s' to user %s group %s",
-                                tgt_file_rnd, fh.user, fh.group)
+                filestat = os.stat(tgt_file)
 
-                os.write(tgt, contents)
-                os.close(tgt)
-                log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
-                if os.rename(tgt_file_rnd, tgt_file) == -1:
-                    raise OSOperationFailedError("Failed to rename '%s' to '%s'",
-                        tgt_file_rnd, tgt_file)
+                if not opts.quiet:
+                    print("F: %s" % (fh.fpath), end='')
+
+                if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                    if not opts.quiet:
+                        print(" (user/group: %s/%s -> %s/%s)" % (
+                                                    filestat.st_uid, filestat.st_gid,
+                                                    expect_uid, expect_gid), end='')
+                    log.debug("Changing file %s ownership to %s/%s",
+                                tgt_file, fh.user, fh.group)
+                    if os.chown(tgt_file, expect_uid, expect_gid) == -1:
+                        log.warn("Failed to fchown '%s' to user %s group %s",
+                                tgt_file, fh.user, fh.group)
+
+                if filestat.st_mode != fh.mode:
+                    if not opts.quiet:
+                        print(" (mode %6o -> %6o)" % (filestat.st_mode, fh.mode), end='')
+
+                    log.debug("'%s': Setting mode: %6o", fh.fpath, fh.mode)
+                    if os.chmod(tgt_file, fh.mode) == -1:
+                        log.warn("Failed to fchmod '%s' to %6o", fh.fpath, fh.mode)
+
+                if filestat.st_mtime != fh.mtime:
+                    if not opts.quiet:
+                        print("(mtime %d -> %d)" % (filestat.st_mtime, fh.mtime), end='')
+                    os.utime(tgt_file, (fh.mtime, fh.mtime))
+
+                if not opts.quiet:
+                    print('')
+
+
+            elif fh.mtime_differs:
+                log.debug("'%s': mtime differs", fh.fpath)
+
+                if not opts.quiet:
+                    filestat = os.stat(tgt_file)
+                    print("F: %s (mtime %d -> %d)" % (fh.fpath,
+                                        filestat.st_mtime, fh.mtime))
 
                 os.utime(tgt_file, (fh.mtime, fh.mtime))
 
@@ -646,8 +704,8 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
         progstr()
 
     while more_to_read:
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
+        # if log.isEnabledFor(logging.DEBUG):
+        #     log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
         try:
             new_bytes = url.read(block_size)
             if not new_bytes:
