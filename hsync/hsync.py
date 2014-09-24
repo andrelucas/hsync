@@ -378,7 +378,7 @@ def fetch_needed(needed, source, opts):
                 if opts.fail_on_errors:
                     raise ContentsFetchFailedException(
                         "Failed to fetch '%s'" % source_url)
-
+                    
             else:
                 chk = hashlib.sha256()
                 log.debug("Hashing contents")
@@ -650,6 +650,12 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
             raise e
 
     print('')
+
+    if size_is_known and bytes_read != size:
+        # That's an error. No need for a cryptochecksum to tell that.
+        log.warn("'%s': Fetched %d bytes, expected %d bytes",
+                    fname, bytes_read, size)
+        return None
 
     return outfile
 
