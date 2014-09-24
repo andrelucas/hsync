@@ -825,7 +825,7 @@ def dest_side(opt, args):
             for fh in needed:
                 print("Needed: %s" % fh.fpath)
             for fh in not_needed:
-                print("Needs delete: %s" % fh.path)
+                print("Needs delete: %s" % fh.fpath)
 
         if needed or not_needed:
             return False
