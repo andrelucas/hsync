@@ -193,7 +193,8 @@ class FileHash(object):
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
         self.gid = self.mapper.get_gid_for_group(group)
-        self.mtime = int(mtime) 
+        self.mtime = int(float(mtime))  # Robustness principle - old versions
+                                        # have float mtime. 
         self.size = int(size) # XXX int length?
 
         self.fpath = fpath
