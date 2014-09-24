@@ -2,8 +2,6 @@
 # Number formatting for progress meters.
 #
 
-from __future__ import division
-
 import logging
 from math import floor
 import unittest
