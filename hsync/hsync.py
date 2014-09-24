@@ -23,6 +23,7 @@ import urlparse
 from exceptions import *
 from filehash import *
 from idmapper import *
+from numformat import bytes_to_iec
 
 
 log = logging.getLogger()
@@ -634,11 +635,14 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                 if opts.progress:
                     if size_is_known:
                         pct = 100.0 * bytes_read / size
-                        print ("\r%s (progress %d/%d [%.0f%%])\r" % (pfx,
-                                                bytes_read, size, pct),
+                        print ("\r%s (progress %s/%s [%.0f%%])\r" % (pfx,
+                                                bytes_to_iec(bytes_read),
+                                                bytes_to_iec(size),
+                                                pct),
                                 end='')
                     else:
-                        print("\r%s (download %d/unknown)" % (pfx, bytes_read),
+                        print("\r%s (download %s/unknown)" % (pfx,
+                                                bytes_to_iec(bytes_read)),
                                 end='')
 
         except urllib2.URLError, e:
