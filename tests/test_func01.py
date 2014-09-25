@@ -350,5 +350,9 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 				print(l, end='', file=newsig)
 			newsig.close()
 
+		# First run should succeed.
+		self.runverify('t_truncdetect1_in')
+
+		# Second run should puke.
 		with self.assertRaises(hsync.TruncatedHashfileError):
 			self.runverify('t_truncdetect1_in', munge_input=do_trunc)
