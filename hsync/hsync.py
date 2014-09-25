@@ -30,6 +30,7 @@ log = logging.getLogger()
 
 class URLMustBeOfTypeFileError(Exception): pass
 class ContentsFetchFailedError(Exception): pass
+class TruncatedHashfileError(Exception): pass
 
 
 def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
@@ -925,6 +926,9 @@ def dest_side(opt, args):
         return False  
 
     src_strfile = hashfile_contents.splitlines()
+    if not src_strfile[-1].startswith("FINAL:"):
+        raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears to be missing!" % hashurl)
+
     src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
 
     opt.source_url = _cano_url(opt.source_url, slash=True)
