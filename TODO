@@ -21,7 +21,11 @@ Features
 
 - Compress the signature file
 
-- Truncate long paths
+- Wildcard exclude
+
+- Specific include as well as exclude
+
+- Truncate long paths (for display)
 
 - Check the HSYNC.SIG FINAL checksum
 
