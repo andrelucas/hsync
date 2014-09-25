@@ -19,6 +19,8 @@ Features
 
 - Add a lockfile
 
+- Compress the signature file
+
 - Truncate long paths
 
 - Check the HSYNC.SIG FINAL checksum
