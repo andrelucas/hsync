@@ -1032,8 +1032,12 @@ def main(cmdargs):
     if log.isEnabledFor(logging.DEBUG):
         log.debug("main: args %s", cmdargs)
 
-    log.debug("Setting stdout to unbuffered")
-    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    # Unbuffering stdout fails if stdout is, for example, a StringIO.
+    try:
+        log.debug("Setting stdout to unbuffered")
+        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    except AttributeError as e:
+        log.debug("Failed to unbuffer stdout, may be in test mode (%s)", e)
 
     if opt.source_dir and opt.dest_dir:
         log.error("Send-side and receive-side options can't be mixed")
