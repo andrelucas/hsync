@@ -9,6 +9,8 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
+- -X isn't working on server side
+
 - Should really sort directory and file names from os.walk()
 
 - After changes (esp.check metadata) are made, the HSYNC.SIG entry needs updated
