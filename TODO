@@ -17,6 +17,8 @@ Bugs
   so redundant re-checks on the next run are eliminated.
   (e.g. change length of file, fix but HSYNC.SIG entry may have old values...)
 
+- The progress object percentage number is misleading.
+
 Features
 
 - Add a lockfile
