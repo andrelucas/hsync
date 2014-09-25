@@ -402,6 +402,8 @@ def fetch_needed(needed, source, opts):
                     if opts.fail_on_errors:
                         raise ContentsFetchFailedException(
                             "Failed to fetch '%s'" % source_url)
+                    else:
+                        log.debug("Failed to fetch '%s', continuing", fh.fpath)
                         
                 else:
                     chk = hashlib.sha256()
@@ -1026,9 +1028,8 @@ def main(cmdargs):
     if log.isEnabledFor(logging.DEBUG):
         log.debug("main: args %s", cmdargs)
 
-    if opt.progress:
-        log.debug("Setting stdout to unbuffered")
-        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    log.debug("Setting stdout to unbuffered")
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     if opt.source_dir and opt.dest_dir:
         log.error("Send-side and receive-side options can't be mixed")
