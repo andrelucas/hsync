@@ -328,6 +328,10 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
                                     ignore_mode=opts.ignore_mode,
                                     trust_mtime=(not opts.always_checksum)):
                 log.debug("%s: needed", fpath)
+                # Store a reference to the object at the destination.
+                # This can be used to update the dest's HSYNC.SIG file and save
+                # on rechecks.
+                fh.associated_dest_object = dst_fdict[fpath]
                 needed.append(fh)                
 
         else:
