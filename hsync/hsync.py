@@ -777,7 +777,11 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
     def progstr():
         if size_is_known:
-            pct = 100.0 * bytes_read / size
+            if size == 0:
+                pct = 100.0     # Seems logical.
+            else:
+                pct = 100.0 * bytes_read / size
+
             print ("\r\t%s (file progress %s/%s [%.0f%%])\r" % (pfx,
                                 IEC.bytes_to_unit(bytes_read),
                                 sizestr,
