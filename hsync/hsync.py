@@ -730,8 +730,17 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
         else:
             filecountstr = ' [file %d]' % file_count_number
 
-    pfx = "\rF: %s%s" % (fname, filecountstr)
-    print(pfx, end='')
+    # This part of the progress meter doesn't change, so cache it.
+    pfx = "%s" % (filecountstr)
+
+    if not opts.quiet:
+        if opts.progress:
+            progress_spacer = "\n\t"
+            pfx = "\r" + pfx
+        else:
+            progress_spacer = ''
+
+        print('\rF: %s%s%s' % (fname, progress_spacer, pfx), end='')
 
     outfile = ''
     progress = False
@@ -769,7 +778,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     def progstr():
         if size_is_known:
             pct = 100.0 * bytes_read / size
-            print ("\r%s (progress %s/%s [%.0f%%])\r" % (pfx,
+            print ("\r\t%s (file progress %s/%s [%.0f%%])\r" % (pfx,
                                 IEC.bytes_to_unit(bytes_read),
                                 sizestr,
                                 pct),
@@ -781,7 +790,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
 
     if opts.progress:
-        progstr()
+        progstr()        
 
     while more_to_read:
         # if log.isEnabledFor(logging.DEBUG):
