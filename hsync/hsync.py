@@ -24,6 +24,7 @@ from exceptions import *
 from filehash import *
 from idmapper import *
 from numformat import IECUnitConverter as IEC
+from stats import StatsCollector
 
 
 log = logging.getLogger()
@@ -978,6 +979,8 @@ def getopts(cmdargs):
     meta.add_option("--fetch-blocksize", default=32*1000,
         help="Specify the number of bytes to retrieve at a time "
             "[default: %default]")
+    # This is used to pass stats around the app.
+    meta.add_option("--stats", help=optparse.SUPPRESS_HELP)
 
     p.add_option_group(meta)
 
@@ -1025,6 +1028,9 @@ def main(cmdargs):
     # As soon as logging is configured, say what we're doing.
     if log.isEnabledFor(logging.DEBUG):
         log.debug("main: args %s", cmdargs)
+
+    stattr = [ 'bytes_total', 'bytes_transferred' ]
+    opt.stats = StatsCollector.init('AppStats', stattr)
 
     if opt.progress:
         log.debug("Setting stdout to unbuffered")
