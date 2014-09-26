@@ -456,8 +456,16 @@ def fetch_needed(needed, source, opts):
 
                     chk = hashlib.sha256()
                     log.debug("Hashing contents")
+
+                    if opts.progress:
+                        print(' checking...', end='')
+
                     chk.update(contents)
                     log.debug("Contents hash done (%s)", chk.hexdigest())
+
+                    if opts.progress:
+                        print('done')
+
                     if chk.hexdigest() != fh.hashstr:
                         log.warn("File '%s' failed checksum verification!", fh.fpath)
                         errorCount += 1
@@ -782,7 +790,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
             else:
                 pct = 100.0 * bytes_read / size
 
-            print ("\r\t%s (file progress %s/%s [%.0f%%])\r" % (pfx,
+            print ("\r\t%s (file progress %s/%s [%.0f%%])" % (pfx,
                                 IEC.bytes_to_unit(bytes_read),
                                 sizestr,
                                 pct),
@@ -813,7 +821,9 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
             log.warn("'%s' fetch failed: %s", str(e))
             raise e
 
-    print('')
+    if not opts.progress:
+        # In progress mode, give the caller a chance to add information.
+        print('')
 
     if size_is_known and bytes_read != size:
         # That's an error. No need for a cryptochecksum to tell that.
