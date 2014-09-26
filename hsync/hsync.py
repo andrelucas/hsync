@@ -790,7 +790,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
 
     if opts.progress:
-        progstr()        
+        progstr()
 
     while more_to_read:
         # if log.isEnabledFor(logging.DEBUG):
