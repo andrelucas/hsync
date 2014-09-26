@@ -19,11 +19,17 @@ Bugs
 
 - The progress object percentage number is misleading.
 
+- Test coverage of hsync.py isn't good enough (nosetests --coverage --cover-html).
+
 Features
 
 - Add a lockfile
 
 - Compress the signature file
+
+- Transfer statistics
+
+- Write in-progress downloads to disk instead of memory, like rsync
 
 - Wildcard exclude
 
