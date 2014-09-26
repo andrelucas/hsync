@@ -141,7 +141,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			return (in_tmp, out_tmp)
 
 
-	def runverify(self, in_dir, out_dir=None, munge_output=None,
+	def runverify(self, in_dir, out_dir=None, munge_output=None, munge_input=None,
 					src_optlist=None, dst_optlist=None, vfy_optlist=None):
 		'''
 		Run hsync, optionally change something, then run the verifier.
@@ -152,6 +152,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 											dst_optlist=dst_optlist)
 		hashfile = os.path.join(self.topdir, in_tmp, 'HSYNC.SIG')
 
+		if munge_input is not None:
+			munge_input(in_tmp)
 		if munge_output is not None:
 			munge_output(out_tmp)
 
@@ -336,3 +338,21 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		os.unlink(sigurl)
 
 
+	def test_truncated_sigfile(self):
+		'''Check we detect a truncated sigfile (no FINAL:)'''
+		def do_trunc(in_tmp):
+			sig = os.path.join(in_tmp, 'HSYNC.SIG')
+			sigtmp = sig + '.tmp'
+			os.rename(sig, sigtmp)
+			newsig = open(sig, 'w')
+			oldsiglines = open(sigtmp, 'r').readlines()
+			for l in oldsiglines[:-1]:
+				print(l, end='', file=newsig)
+			newsig.close()
+
+		# First run should succeed.
+		self.runverify('t_truncdetect1_in')
+
+		# Second run should puke.
+		with self.assertRaises(hsync.TruncatedHashfileError):
+			self.runverify('t_truncdetect1_in', munge_input=do_trunc)

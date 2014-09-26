@@ -9,17 +9,27 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
+- -X isn't working on server side
+
 - Should really sort directory and file names from os.walk()
 
 - After changes (esp.check metadata) are made, the HSYNC.SIG entry needs updated
   so redundant re-checks on the next run are eliminated.
   (e.g. change length of file, fix but HSYNC.SIG entry may have old values...)
 
+- The progress object percentage number is misleading.
+
 Features
 
 - Add a lockfile
 
-- Truncate long paths
+- Compress the signature file
+
+- Wildcard exclude
+
+- Specific include as well as exclude
+
+- Truncate long paths (for display)
 
 - Check the HSYNC.SIG FINAL checksum
 

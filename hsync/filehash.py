@@ -44,6 +44,7 @@ class FileHash(object):
 
     def __init__(self):
         self.hash_safe = False
+        self.associated_dest_object = None
 
 
     @classmethod
