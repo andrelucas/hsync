@@ -9,32 +9,24 @@ log = logging.getLogger()
 
 class UidGidMapper(object):
 
-    # These are all program-wide settings, and so suitable for class
-    # attributes.
-    #
-    # (Ok, uid and gid can change; but this isn't really intended for
-    # setuid operation.)
-
-    uid_to_name = {}
-    name_to_uid = {}
-    gid_to_group = {}
-    group_to_gid = {}
-
-    missing_name_warned = set()
-    missing_group_warned = set()
-    missing_uid_warned = set()
-    missing_gid_warned = set()
-
-    default_uid = os.getuid()
-    default_gid = os.getgid()
-
-    # Let these throw KeyError - if we can't find our own username and group
-    # given our own uid and gid, we're in bad shape.
-    default_name = pwd.getpwuid(default_uid).pw_name
-    default_group = grp.getgrgid(default_gid).gr_name
-
     def __init__(self):
-        pass
+        self.uid_to_name = {}
+        self.name_to_uid = {}
+        self.gid_to_group = {}
+        self.group_to_gid = {}
+
+        self.missing_name_warned = set()
+        self.missing_group_warned = set()
+        self.missing_uid_warned = set()
+        self.missing_gid_warned = set()
+
+        self.default_uid = os.getuid()
+        self.default_gid = os.getgid()
+
+        # Let these throw KeyError - if we can't find our own username and group
+        # given our own uid and gid, we're in bad shape.
+        self.default_name = pwd.getpwuid(self.default_uid).pw_name
+        self.default_group = grp.getgrgid(self.default_gid).gr_name
 
 
     def set_default_uid(self, uid):

@@ -302,6 +302,13 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     needed = []
     excluded_dirs = set()
 
+    mapper = UidGidMapper()
+    if opts.set_user:
+        mapper.set_default_name(opts.set_user)
+    if opts.set_group:
+        mapper.set_default_group(opts.set_group)
+
+
     for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
 
         exclude = False
@@ -322,6 +329,15 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         if exclude:
             continue
+
+        # If the user overrode stuff, set that up here.
+        if opts.set_user:
+            fh.uid = mapper.default_uid
+            fh.user = mapper.default_name
+
+        if opts.set_group:
+            fh.gid = mapper.default_gid
+            fh.group = mapper.set_default_group
 
         if fpath in dst_fdict:
 
@@ -485,8 +501,8 @@ def fetch_needed(needed, source, opts):
                     if tgt == -1:
                         raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
 
-                    expect_uid = mapper.get_uid_for_name(fh.user)
-                    expect_gid = mapper.get_gid_for_group(fh.group)
+                    expect_uid = fh.uid
+                    expect_gid = fh.gid
 
                     filestat = os.stat(tgt_file_rnd)
                     if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
@@ -512,8 +528,8 @@ def fetch_needed(needed, source, opts):
 
                 log.debug("'%s': metadata differs", fh.fpath)
 
-                expect_uid = mapper.get_uid_for_name(fh.user)
-                expect_gid = mapper.get_gid_for_group(fh.group)
+                expect_uid = fh.uid
+                expect_gid = fh.gid
 
                 filestat = os.stat(tgt_file)
 
@@ -535,11 +551,11 @@ def fetch_needed(needed, source, opts):
                 if filestat.st_mode != fh.mode:
                     changed_mode = True
                     if not opts.quiet:
-                        print(" (mode %6o -> %6o)" % (filestat.st_mode, fh.mode), end='')
+                        print(" (mode %06o -> %06o)" % (filestat.st_mode, fh.mode), end='')
 
-                    log.debug("'%s': Setting mode: %6o", fh.fpath, fh.mode)
+                    log.debug("'%s': Setting mode: %06o", fh.fpath, fh.mode)
                     if os.chmod(tgt_file, fh.mode) == -1:
-                        log.warn("Failed to fchmod '%s' to %6o", fh.fpath, fh.mode)
+                        log.warn("Failed to fchmod '%s' to %06o", fh.fpath, fh.mode)
 
                 if filestat.st_mtime != fh.mtime:
                     changed_mtime = True
@@ -595,8 +611,8 @@ def fetch_needed(needed, source, opts):
                                     (linkpath, fh.link_target))                       
                         os.symlink(fh.link_target, linkpath)
 
-            expect_uid = mapper.get_uid_for_name(fh.user)
-            expect_gid = mapper.get_gid_for_group(fh.group)
+            expect_uid = fh.uid
+            expect_gid = fh.gid
 
             lstat = os.lstat(linkpath)
             if lstat.st_uid != expect_uid or lstat.st_gid != expect_gid:
@@ -631,19 +647,25 @@ def fetch_needed(needed, source, opts):
             # regular os.*() variants, not the os.f*() methods.
 
             # Change modes and ownership.
-            expect_uid = mapper.get_uid_for_name(fh.user)
-            expect_gid = mapper.get_gid_for_group(fh.group)
+            expect_uid = fh.uid
+            expect_gid = fh.gid
 
             dstat = os.stat(tgt_dir)
             if dstat.st_uid != expect_uid or dstat.st_gid != expect_gid:
                 changed_uidgid = True
                 log.debug("Changing dir %s ownership to %s/%s",
                             tgt_dir, fh.user, fh.group)
+                if not opts.quiet:
+                    print("D: %s (user/group: %s/%s -> %s/%s)" % (fh.fpath,
+                            dstat.st_uid, dstat.st_gid, expect_uid, expect_gid))
                 os.chown(tgt_dir, expect_uid, expect_gid)
 
             if dstat.st_mode != fh.mode:
                 changed_mode = True
                 log.debug("Changing dir %s mode to %06o", tgt_dir, fh.mode)
+                if not opts.quiet:
+                    print("D: %s (mode: %06o -> %06o)" % (fh.fpath,
+                            dstat.st_mode, fh.mode))
                 os.chmod(tgt_dir, fh.mode)
 
         # Update the client-side HSYNC.SIG data.
@@ -1161,7 +1183,7 @@ def main(cmdargs):
         # Quickly check if the user and group settings are ok.
         m = UidGidMapper()
         if opt.set_user:
-            m.set_default_user(opt.set_user)
+            m.set_default_name(opt.set_user)
         if opt.set_group:
             m.set_default_group(opt.set_group)
 
