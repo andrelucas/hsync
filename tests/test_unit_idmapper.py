@@ -23,7 +23,7 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 
 
 	def test_obvious(self):
-		'''Test obvious uid and gid mappings'''
+		'''Test obvious uid and gid idmapper mappings'''
 		self.assertEquals(self.m.get_name_for_uid(os.getuid()), self.my_name,
 						"uid->name is mapped properly")
 		self.assertEquals(self.m.get_uid_for_name(self.my_name), self.my_uid,
@@ -35,7 +35,7 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 
 
 	def test_nonExistentIds(self):
-		'''Bogus uid and gid should not cause KeyError'''
+		'''Bogus idmapper uid and gid should not cause KeyError'''
 		self.assertEquals(self.m.get_name_for_uid(99999), self.my_name,
 						"Bogus uid should not throw KeyError")
 		self.assertEquals(self.m.get_group_for_gid(99999), self.my_group,
@@ -43,8 +43,23 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 
 
 	def test_nonExistentNames(self):
-		'''Bogus user and group should not cause KeyError'''
+		'''Bogus idmapper user and group should not cause KeyError'''
 		self.assertEquals(self.m.get_uid_for_name('bogusname'),
 			self.my_uid, "Bogus name should not throw KeyError")
 		self.assertEquals(self.m.get_gid_for_group('bogusgroup'),
 			self.my_gid, "Bogus group should not throw KeyError")
+
+
+	def test_bad_defaults_raise(self):
+		'''Bogus idmapper set_default_*()s raise exceptions'''
+		with self.assertRaises(KeyError):
+			self.m.set_default_uid(99999)
+
+		with self.assertRaises(KeyError):
+			self.m.set_default_gid(99999)
+
+		with self.assertRaises(KeyError):
+			self.m.set_default_name('madeupname')
+
+		with self.assertRaises(KeyError):
+			self.m.set_default_group('madeupgroup')

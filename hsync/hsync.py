@@ -1034,6 +1034,10 @@ def getopts(cmdargs):
         help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
         help="Specify the data source URL")
+    recv.add_option("--set-user",
+        help="Specify the owner for local files")
+    recv.add_option("--set-group",
+        help="Specify the group for local files")
     recv.add_option("--no-write-hashfile", action="store_true",
         help="Don't write a signature file after sync")
     recv.add_option("--ignore-mode", action="store_true",
@@ -1153,6 +1157,14 @@ def main(cmdargs):
 
     # Receive-side.
     elif opt.dest_dir:
+
+        # Quickly check if the user and group settings are ok.
+        m = UidGidMapper()
+        if opt.set_user:
+            m.set_default_user(opt.set_user)
+        if opt.set_group:
+            m.set_default_group(opt.set_group)
+
         return dest_side(opt, args)
  
     else:

@@ -32,7 +32,34 @@ class UidGidMapper(object):
     # given our own uid and gid, we're in bad shape.
     default_name = pwd.getpwuid(default_uid).pw_name
     default_group = grp.getgrgid(default_gid).gr_name
-    
+
+    def __init__(self):
+        pass
+
+
+    def set_default_uid(self, uid):
+        name = pwd.getpwuid(uid).pw_name
+        self.default_uid = uid
+        self.default_name = name
+
+
+    def set_default_gid(self, gid):
+        group = grp.getgrgid(gid).gr_name
+        self.default_gid = gid
+        self.default_group = group
+
+
+    def set_default_name(self, name):
+        uid = pwd.getpwnam(name).pw_uid
+        self.default_name = name
+        self.default_uid = uid
+
+
+    def set_default_group(self, group):
+        gid = grp.getgrnam(group).gr_gid
+        self.default_group = group
+        self.default_gid = gid
+
 
     def get_name_for_uid(self, uid):
         uid=int(uid)
