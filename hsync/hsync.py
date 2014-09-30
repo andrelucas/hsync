@@ -1091,10 +1091,11 @@ def dest_side(opt, args):
                 for fh in not_needed:
                     print("- %s" % fh.fpath)
 
+        if opt.verbose:
             print("\nRaw %s:" % opt.stats.name())
             for k, v in opt.stats.iteritems():
                 print("  %s = %s" % (k, v))
-            print("\n")
+            print('')
 
         return True
 
