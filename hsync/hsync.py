@@ -777,6 +777,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     progress = False
 
     try:
+        opts.stats.content_fetches += 1
         url = urllib2.urlopen(fullpath)
     except urllib2.HTTPError as e:
         if e.code == 404:
@@ -921,6 +922,7 @@ def source_side(opt, args):
 
 
 def dest_side(opt, args):
+
     if opt.source_url is None:
         log.error("-u/--source-url must be defined for -D/--dest-dir mode")
         return False
@@ -1131,6 +1133,21 @@ def getopts(cmdargs):
     return (opt, args)
 
 
+
+def init_stats():
+    '''Initialise a StatsCollector for the application to use.'''
+    stattr = [
+        # rsync-style 'savings' measurement.
+        'bytes_total',
+        'bytes_transferred',
+
+        # fetch_contents()
+        'content_fetches',
+
+    ]
+    return StatsCollector.init('AppStats', stattr)
+
+
 def main(cmdargs):
 
     (opt, args) = getopts(cmdargs)
@@ -1158,8 +1175,7 @@ def main(cmdargs):
     if log.isEnabledFor(logging.DEBUG):
         log.debug("main: args %s", cmdargs)
 
-    stattr = [ 'bytes_total', 'bytes_transferred' ]
-    opt.stats = StatsCollector.init('AppStats', stattr)
+    opt.stats = init_stats()
 
     # Unbuffering stdout fails if stdout is, for example, a StringIO.
     try:
