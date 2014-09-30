@@ -31,6 +31,14 @@ class StatsCollector(object):
 		return StatsCollector(name, attrlist)
 
 
+	def __str__(self):
+		skey = self._existing_keys()
+		skey.sort()
+		log.debug(skey)
+		items = ['%s=%s' % (k, getattr(self, k)) for k in skey]
+		return '%s: %s' % (self.__name, ', '.join(items))
+
+
 	def _unfreeze(self):
 		self.__is_frozen = False
 

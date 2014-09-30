@@ -314,6 +314,10 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         exclude = False
 
+        # Generate (pointless) stat.
+        if not fh.is_dir and fh.size_is_known:
+            opts.stats.bytes_total += fh.size
+
         # Process exclusions.
         if fh.is_dir and fpath in direx:
             log.debug("%s: Exclude dir", fpath)
@@ -448,6 +452,9 @@ def fetch_needed(needed, source, opts):
             if fh.dest_missing or fh.contents_differ:
 
                 differing_file_index += 1
+
+                opts.stats.file_contents_differed += 1
+
                 log.debug("Fetching: '%s' dest_missing %s contents_differ %s",
                     fh.fpath, fh.dest_missing, fh.contents_differ)
 
@@ -468,8 +475,7 @@ def fetch_needed(needed, source, opts):
                         
                 else:
 
-                    changed_contents = True     # If we fetched it, we changed it.    
-                    changed_mode = True         # Might not be true, no harm.
+                    changed_contents = True     # If we fetched it, we changed it.
 
                     chk = hashlib.sha256()
                     log.debug("Hashing contents")
@@ -514,6 +520,8 @@ def fetch_needed(needed, source, opts):
                             log.warn("Failed to fchown '%s' to user %s group %s",
                                     tgt_file_rnd, fh.user, fh.group)
 
+                    changed_mode = False # We didn't /change/ it, we created it.
+
                     os.write(tgt, contents)
                     os.close(tgt)
                     log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
@@ -523,6 +531,9 @@ def fetch_needed(needed, source, opts):
 
                     changed_mtime = True
                     os.utime(tgt_file, (fh.mtime, fh.mtime))
+
+                    if changed_uidgid or changed_mtime or changed_mode:
+                        opts.stats.file_metadata_differed += 1
 
 
             elif fh.metadata_differs:
@@ -564,6 +575,8 @@ def fetch_needed(needed, source, opts):
                         print(" (mtime %d -> %d)" % (filestat.st_mtime, fh.mtime), end='')
                     os.utime(tgt_file, (fh.mtime, fh.mtime))
 
+                opts.stats.file_metadata_differed += 1
+
                 if not opts.quiet:
                     print('')
 
@@ -579,6 +592,7 @@ def fetch_needed(needed, source, opts):
                                         filestat.st_mtime, fh.mtime))
 
                 os.utime(tgt_file, (fh.mtime, fh.mtime))
+                opts.stats.file_metadata_differed += 1
 
 
         elif fh.is_link:
@@ -591,6 +605,7 @@ def fetch_needed(needed, source, opts):
                     print("L: (create) %s -> %s" %
                             (linkpath, fh.link_target))
                 os.symlink(fh.link_target, linkpath)
+                opts.stats.link_contents_differed += 1
 
             else:
                 log.debug("Path '%s' exists in the filesystem", linkpath)
@@ -611,6 +626,7 @@ def fetch_needed(needed, source, opts):
                             print("L: (move) %s -> %s" %
                                     (linkpath, fh.link_target))                       
                         os.symlink(fh.link_target, linkpath)
+                        opts.stats.link_contents_differed += 1
 
             expect_uid = fh.uid
             expect_gid = fh.gid
@@ -627,6 +643,9 @@ def fetch_needed(needed, source, opts):
                 log.debug("Changing link '%s' mode to %06o",
                             linkpath, fh.mode)
                 os.lchmod(linkpath, fh.mode)
+
+            if changed_mode or changed_uidgid:
+                opts.stats.link_metadata_differed += 1
 
 
         elif fh.is_dir:
@@ -668,6 +687,10 @@ def fetch_needed(needed, source, opts):
                     print("D: %s (mode: %06o -> %06o)" % (fh.fpath,
                             dstat.st_mode, fh.mode))
                 os.chmod(tgt_dir, fh.mode)
+
+            if changed_mode or changed_uidgid:
+                opts.stats.directory_metadata_differed += 1
+
 
         # Update the client-side HSYNC.SIG data.
         log.debug("Updating dest hash for '%s'", fh.fpath)
@@ -725,7 +748,8 @@ def delete_not_needed(not_needed, target, opts):
 
 def fetch_contents(fpath, opts, root='', no_trim=False,
                     for_filehash=None, short_name=None,
-                    file_count_number=None, file_count_total=None):
+                    file_count_number=None, file_count_total=None,
+                    remote_flag=True, include_in_total=True):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
 
@@ -777,7 +801,11 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     progress = False
 
     try:
-        opts.stats.content_fetches += 1
+        if remote_flag and include_in_total:
+            opts.stats.content_fetches += 1
+        else:
+            opts.stats.metadata_fetches += 1
+
         url = urllib2.urlopen(fullpath)
     except urllib2.HTTPError as e:
         if e.code == 404:
@@ -837,6 +865,12 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
                 more_to_read = False
             else:
                 bytes_read += len(new_bytes)
+                if remote_flag:
+                    if include_in_total:
+                        opts.stats.bytes_transferred += len(new_bytes)
+                    else:
+                        opts.stats.metadata_bytes_transferred += len(new_bytes)
+
                 outfile += new_bytes
                 if opts.progress:
                     progstr()
@@ -966,12 +1000,14 @@ def dest_side(opt, args):
     # Fetch the signature file.
     if not opt.quiet:
         print("Fetching remote hashfile")
-    hashfile_contents = fetch_contents(hashurl, opt, short_name=opt.hash_file)
+    hashfile_contents = fetch_contents(hashurl, opt,
+                                        short_name=opt.hash_file, 
+                                        include_in_total=False)
 
     if hashfile_contents is None:
         # We're not coming back from this.
         log.error("Failed to retrieve signature file from '%s", hashurl)
-        return False  
+        return False
 
     src_strfile = hashfile_contents.splitlines()
     if not src_strfile[-1].startswith("FINAL:"):
@@ -994,7 +1030,9 @@ def dest_side(opt, args):
 
         # Fetch the signature file.
         hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                                    short_name=opt.hash_file)
+                                                    short_name=opt.hash_file,
+                                                    remote_flag=False,
+                                                    include_in_total=False)
         dst_strfile = hashfile_contents.splitlines()
         existing_hl = hashlist_from_stringlist(dst_strfile, opt, root=opt.dest_dir)
 
@@ -1040,7 +1078,10 @@ def dest_side(opt, args):
                                         use_tmp=True, verb='Writing'):
                 log.error("Failed to write signature file '%s'",
                             os.path.join(opt.source_dir, opt.hash_file))
-            return False
+                return False
+
+        if opt.verbose:
+            print('%s' % opt.stats)
 
         return True
 
@@ -1140,9 +1181,18 @@ def init_stats():
         # rsync-style 'savings' measurement.
         'bytes_total',
         'bytes_transferred',
+        'metadata_bytes_transferred',
 
         # fetch_contents()
         'content_fetches',
+        'metadata_fetches',
+
+        # Fetch stats.
+        'file_contents_differed',
+        'file_metadata_differed',
+        'directory_metadata_differed',
+        'link_contents_differed',
+        'link_metadata_differed',
 
     ]
     return StatsCollector.init('AppStats', stattr)

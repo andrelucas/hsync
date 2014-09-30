@@ -45,6 +45,7 @@ class FileHash(object):
     def __init__(self):
         self.hash_safe = False
         self.associated_dest_object = None
+        self.size_is_known = False
 
 
     @classmethod
@@ -75,6 +76,7 @@ class FileHash(object):
         self.gid = self.stat.st_gid
         self.group = self.mapper.get_group_for_gid(self.gid)
         self.size = self.stat.st_size
+        self.size_is_known = True
         self.mtime = int(self.stat.st_mtime)
 
         # Safe defaults.
@@ -197,6 +199,7 @@ class FileHash(object):
         self.mtime = int(float(mtime))  # Robustness principle - old versions
                                         # have float mtime. 
         self.size = int(size) # XXX int length?
+        self.size_is_known = True
 
         self.fpath = fpath
 
