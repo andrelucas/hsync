@@ -29,6 +29,8 @@ Features
 
 - Transfer statistics
 
+- Retry failed downloads
+
 - Write in-progress downloads to disk instead of memory, like rsync
 
 - Wildcard exclude
