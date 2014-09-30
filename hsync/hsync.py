@@ -1068,7 +1068,7 @@ def dest_side(opt, args):
                         else:
                             print('')
 
-        if not_needed:
+        if not opt.no_delete and not_needed:
             shown_header = False
 
             for fh in not_needed:
@@ -1140,6 +1140,9 @@ def getopts(cmdargs):
         help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
         help="Specify the data source URL")
+    recv.add_option("--no-delete", action="store_true",
+        help="Never remove files from the destination, even if they're "
+            "not present on the source")
     recv.add_option("--set-user",
         help="Specify the owner for local files")
     recv.add_option("--set-group",
