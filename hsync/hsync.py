@@ -1048,13 +1048,39 @@ def dest_side(opt, args):
 
     if opt.verify_only:
         # Give a report if we're verbose.
-        if opt.verbose:
-            for fh in needed:
-                print("Needed: %s" % fh.fpath)
-            for fh in not_needed:
-                print("Needs delete: %s" % fh.fpath)
+        needed_is_real = False
 
-        if needed or not_needed:
+        if needed:
+            shown_header = False
+
+            for fh in needed:
+                if not fh.is_dir:
+                    needed_is_real = True
+
+                    if not opt.quiet:
+                        if not shown_header:
+                            print("Files needing transfer:")
+                            shown_header = True
+
+                        print("+ %s" % fh.fpath, end='')
+                        if not fh.contents_differ and fh.metadata_differs:
+                            print(" (metadata change only)")
+                        else:
+                            print('')
+
+        if not_needed:
+            shown_header = False
+
+            for fh in not_needed:
+                if not shown_header:
+                    print("Files needing deletion:")
+                    shown_header = True
+
+                needed_is_real = True
+                if not opt.quiet:
+                    print("- %s" % fh.fpath)
+
+        if needed_is_real:
             return False
         else:
             # True ('verified') means 'nothing to do'.
