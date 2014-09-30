@@ -39,6 +39,10 @@ class StatsCollector(object):
 		return '%s: %s' % (self.__name, ', '.join(items))
 
 
+	def name(self):
+		return self.__name
+
+
 	def _unfreeze(self):
 		self.__is_frozen = False
 
@@ -49,6 +53,15 @@ class StatsCollector(object):
 
 	def _existing_keys(self):
 		return [k for k in self.__dict__.keys() if not k.startswith('_')]
+
+
+	def keys(self):
+		return self._existing_keys()
+
+
+	def iteritems(self):
+		for k in self.keys():
+			yield k, getattr(self, k)
 
 
 	def set_attributes(self, attrlist):

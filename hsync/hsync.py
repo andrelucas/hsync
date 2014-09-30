@@ -53,7 +53,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
     '''
 
-    log.debug("hashlist_generate: srcpath %s source_mode %s", 
+    log.debug("hashlist_generate: srcpath %s source_mode %s",
                 srcpath, source_mode)
     if os.path.exists(srcpath):
         if not os.path.isdir(srcpath):
@@ -136,7 +136,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
             hashlist.append(fh)
 
         files.sort()
-            
+
         for n, filename in enumerate(files, start=1):
 
             fpath = os.path.join(root, filename)
@@ -266,7 +266,7 @@ def hashlist_from_stringlist(strfile, opts, root=None):
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=root)
             hashlist.append(fh)
-    
+
     return hashlist
 
 
@@ -283,7 +283,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     '''
 
     src_fdict = hashlist_to_dict(src_hashlist)
-    
+
     # Take the simple road. Generate a hashlist for the destination.
     dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False,
                                         existing_hashlist=existing_hashlist)
@@ -354,13 +354,13 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
                 # This can be used to update the dest's HSYNC.SIG file and save
                 # on rechecks.
                 fh.associated_dest_object = dst_fdict[fpath]
-                needed.append(fh)                
+                needed.append(fh)
 
         else:
             log.debug("%s: needed", fpath)
             fh.dest_missing = True
             needed.append(fh)
-                
+
     not_needed = []
     for fpath, fh in dst_fdict.iteritems():
         if not fpath in src_fdict:
@@ -442,7 +442,7 @@ def fetch_needed(needed, source, opts):
         source_url = urlparse.urljoin(source, fh.fpath)
 
         if fh.is_file:
-            
+
             # if not opts.quiet:
             #     print("Get file: %s" % fh.fpath)
 
@@ -472,7 +472,7 @@ def fetch_needed(needed, source, opts):
                             "Failed to fetch '%s'" % source_url)
                     else:
                         log.debug("Failed to fetch '%s', continuing", fh.fpath)
-                        
+
                 else:
 
                     changed_contents = True     # If we fetched it, we changed it.
@@ -616,7 +616,7 @@ def fetch_needed(needed, source, opts):
 
                 else:
                     # Symlink found. Check it.
-                    curtgt = os.readlink(linkpath)        
+                    curtgt = os.readlink(linkpath)
                     # Create or move the symlink.
                     if curtgt != fh.link_target:
                         changed_contents = True
@@ -624,7 +624,7 @@ def fetch_needed(needed, source, opts):
                                      linkpath, dh.link_target)
                         if not opts.quiet:
                             print("L: (move) %s -> %s" %
-                                    (linkpath, fh.link_target))                       
+                                    (linkpath, fh.link_target))
                         os.symlink(fh.link_target, linkpath)
                         opts.stats.link_contents_differed += 1
 
@@ -706,8 +706,8 @@ def fetch_needed(needed, source, opts):
 
     else:
         log.warn("Fetch failed with %d errors", errorCount)
-        return None    
-                
+        return None
+
 
 def delete_not_needed(not_needed, target, opts):
     '''
@@ -910,7 +910,7 @@ def source_side(opt, args):
     # amount of scanning.
 
     abs_hashfile = None
-    
+
     if opt.signature_url:
         hashurl = _cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
@@ -947,7 +947,7 @@ def source_side(opt, args):
             log.error("Failed to write signature file '%s'",
                 os.path.join(opt.source_dir, opt.hash_file))
             return False
-        
+
         return True
 
     else:
@@ -987,7 +987,7 @@ def dest_side(opt, args):
     if opt.proxy_url:
         log.debug("Configuring proxy")
         raise Exception("Explicit proxy not yet implemented")
-        
+
     hashurl = None
     if opt.signature_url:
         hashurl = _cano_url(opt.signature_url)
@@ -1001,7 +1001,7 @@ def dest_side(opt, args):
     if not opt.quiet:
         print("Fetching remote hashfile")
     hashfile_contents = fetch_contents(hashurl, opt,
-                                        short_name=opt.hash_file, 
+                                        short_name=opt.hash_file,
                                         include_in_total=False)
 
     if hashfile_contents is None:
@@ -1021,7 +1021,7 @@ def dest_side(opt, args):
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     existing_hl = None
 
-    # Make a note of whether or not an old hashfile exists. 
+    # Make a note of whether or not an old hashfile exists.
     old_hashfile_exists = os.path.exists(abs_hashfile)
 
     if not opt.always_checksum and old_hashfile_exists:
@@ -1037,7 +1037,7 @@ def dest_side(opt, args):
         existing_hl = hashlist_from_stringlist(dst_strfile, opt, root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
-    # 
+    #
     # Since we've just done a scan, write the results to the disk - then, if
     # Something goes wrong, at least we've saved the scan results.
     (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
@@ -1059,7 +1059,7 @@ def dest_side(opt, args):
         else:
             # True ('verified') means 'nothing to do'.
             return True
-    
+
     else:
         fetch_added = fetch_needed(needed, opt.source_url, opt)
         if fetch_added is not None:
@@ -1080,8 +1080,21 @@ def dest_side(opt, args):
                             os.path.join(opt.source_dir, opt.hash_file))
                 return False
 
-        if opt.verbose:
-            print('%s' % opt.stats)
+        if not opt.quiet:
+            if fetch_added:
+                print("Files added:")
+                for fh in fetch_added:
+                    print("+ %s" % fh.fpath)
+
+            if not_needed:
+                print("\nFiles removed:")
+                for fh in not_needed:
+                    print("- %s" % fh.fpath)
+
+            print("\nRaw %s:" % opt.stats.name())
+            for k, v in opt.stats.iteritems():
+                print("  %s = %s" % (k, v))
+            print("\n")
 
         return True
 
@@ -1260,9 +1273,9 @@ def main(cmdargs):
             m.set_default_group(opt.set_group)
 
         return dest_side(opt, args)
- 
+
     else:
-        print("You gave me nothing to do! Try '%s --help'." % 
+        print("You gave me nothing to do! Try '%s --help'." %
             os.path.basename(sys.argv[0]))
         return True
 
@@ -1273,4 +1286,4 @@ def csmain():
 
 
 if __name__ == '__main__':
-    csmain()        
+    csmain()
