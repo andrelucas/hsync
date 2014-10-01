@@ -1047,6 +1047,13 @@ def dest_side(opt, args):
                             "environment variables")
 
     hashurl = None
+    hashfile = opt.hash_file
+    shortname = hashfile
+
+    if opt.remote_sig_compressed:
+        hashfile += '.gz'
+        compressed_sig = True
+
     if opt.signature_url:
         hashurl = _cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
@@ -1054,16 +1061,16 @@ def dest_side(opt, args):
         if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
             log.debug("Assuming compression for signature URL '%s'", opt.signature_url)
             compressed_sig = True
+            shortname += '.gz'
 
         if opt.remote_sig_compressed:
             log.debug("Force remote signature compression mode")
             compressed_sig = True
 
     else:
-        hashfile = opt.hash_file
         if opt.remote_sig_compressed:
-            hashfile += '.gz'
             compressed_sig = True
+            shortname += '.gz'
 
         hashurl = _cano_url(opt.source_url, slash=True) + hashfile
         log.debug("Synthesised signature URL '%s'", hashurl)
@@ -1073,7 +1080,7 @@ def dest_side(opt, args):
         print("Fetching remote hashfile")
 
     hashfile_contents = fetch_contents(hashurl, opt,
-                                        short_name=opt.hash_file,
+                                        short_name=shortname,
                                         include_in_total=False)
 
     if hashfile_contents is None:
@@ -1396,6 +1403,14 @@ def main(cmdargs):
             m.set_default_name(opt.set_user)
         if opt.set_group:
             m.set_default_group(opt.set_group)
+
+        # Try to guess the -u setting if only -U is given.
+        if opt.signature_url and not opt.source_url:
+            up = urlparse.urlparse(opt.signature_url)
+            opt.source_url = urlparse.urlunparse([up.scheme, up.netloc, 
+                                    os.path.dirname(up.path), '', '', ''])
+            log.debug("Synthesised source URL '%s' from signature URL '%s'",
+                        opt.source_url, opt.signature_url)
 
         return dest_side(opt, args)
 
