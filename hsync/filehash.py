@@ -293,7 +293,7 @@ class FileHash(object):
         md.update(self.user)
         md.update(self.group)
         md.update(self.hashstr)
-        return md
+        return md.hexdigest()
 
 
     def hash_file(self):

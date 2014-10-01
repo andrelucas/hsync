@@ -266,7 +266,7 @@ def hash_of_hashlist(hashlist):
 
     md = hashlib.sha256()
     for fh in hashlist:
-        md.update(fh.sha_hash().digest())
+        md.update(fh.sha_hash())
 
     return md.hexdigest()
 
