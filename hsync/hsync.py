@@ -23,6 +23,7 @@ import urlparse
 from exceptions import *
 from filehash import *
 from idmapper import *
+from lockfile import LockFileManager
 from numformat import IECUnitConverter as IEC
 from stats import StatsCollector
 
@@ -141,7 +142,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
             fpath = os.path.join(root, filename)
 
-            if filename == opts.hash_file:
+            if filename == opts.hash_file or filename == opts.hash_file + '.lock':
                 log.debug("Skipping pre-existing hash file '%s'", opts.hash_file)
                 continue
 
@@ -931,28 +932,33 @@ def source_side(opt, args):
 
     existing_hl = None
 
-    if not opt.always_checksum and os.path.exists(abs_hashfile):
-        if not opt.quiet:
-            print("Reading existing hashfile")
+    # Lock the source-side hash file.
+    abs_lockfile = abs_hashfile + '.lock'
+    with LockFileManager(abs_lockfile):
 
-        # Fetch the signature file.
-        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt, short_name=opt.hash_file)
-        strfile = hashfile_contents.splitlines()
-        existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
+        if not opt.always_checksum and os.path.exists(abs_hashfile):
+            if not opt.quiet:
+                print("Reading existing hashfile")
 
-    hashlist = hashlist_generate(opt.source_dir, opt, existing_hashlist=existing_hl)
-    if hashlist is not None:
+            # Fetch the signature file.
+            hashfile_contents = fetch_contents('file://' + abs_hashfile, opt, short_name=opt.hash_file)
+            strfile = hashfile_contents.splitlines()
+            existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
 
-        if not sigfile_write(hashlist, abs_hashfile, opt, use_tmp=True):
-            log.error("Failed to write signature file '%s'",
-                os.path.join(opt.source_dir, opt.hash_file))
+        hashlist = hashlist_generate(opt.source_dir, opt, existing_hashlist=existing_hl)
+        if hashlist is not None:
+
+            write_success = sigfile_write(hashlist, abs_hashfile, opt, use_tmp=True)
+            if not write_success:
+                log.error("Failed to write signature file '%s'",
+                    os.path.join(opt.source_dir, opt.hash_file))
+                return False
+
+            return True
+
+        else:
+            log.error("Send-side generate failed")
             return False
-
-        return True
-
-    else:
-        log.error("Send-side generate failed")
-        return False
 
 
 def dest_side(opt, args):
@@ -986,7 +992,8 @@ def dest_side(opt, args):
 
     if opt.proxy_url:
         log.debug("Configuring proxy")
-        raise Exception("Explicit proxy not yet implemented")
+        raise Exception("Explicit proxy not yet implemented, use "
+                            "environment variables")
 
     hashurl = None
     if opt.signature_url:

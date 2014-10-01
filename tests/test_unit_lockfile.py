@@ -7,7 +7,7 @@ import shutil
 from time import sleep
 import unittest
 
-from hsync.lockfile import LockFile
+from hsync.lockfile import LockFile, LockFileManager
 
 
 class TestUnitLockFileTestCase(unittest.TestCase):
@@ -49,3 +49,12 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 		l1.remove()
 		self.assertFalse(os.path.isfile(self.locktmp), "Lockfile removed")
+
+
+	def test_context(self):
+		with LockFileManager(self.locktmp):
+			self.assertTrue(os.path.exists(self.locktmp),
+				"Lockfile exists inside manager")
+
+		self.assertFalse(os.path.isfile(self.locktmp), "Lockfile removed")
+

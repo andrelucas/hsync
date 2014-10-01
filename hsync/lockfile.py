@@ -44,3 +44,20 @@ class LockFile(object):
 		log.debug("LockFile __del__()")
 		self.remove()
 
+
+class LockFileManager(object):
+
+	def __init__(self, lockfilename):
+		self.lockfilename = lockfilename
+
+
+	def __enter__(self):
+		self.lock = LockFile(self.lockfilename)
+		return self.lock
+
+
+	def __exit__(self, exc_type, exc_value, exc_tb):
+		# Don't care about the exception.
+		self.lock.remove()
+		self.lock = None
+
