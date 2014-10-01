@@ -9,21 +9,13 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- -X isn't working on server side
-
-- Should really sort directory and file names from os.walk()
-
-- After changes (esp.check metadata) are made, the HSYNC.SIG entry needs updated
-  so redundant re-checks on the next run are eliminated.
-  (e.g. change length of file, fix but HSYNC.SIG entry may have old values...)
-
-- The progress object percentage number is misleading.
+- -X doesn't appear to be working on server side
 
 - Test coverage of hsync.py isn't good enough (nosetests --coverage --cover-html).
 
 Features
 
-- Add a lockfile
+- Add a built-in way to remove an old lockfile
 
 - Compress the signature file
 
@@ -40,8 +32,6 @@ Features
 - Truncate long paths (for display)
 
 - Check the HSYNC.SIG FINAL checksum
-
-- Specify default user and group
 
 - Better tests
   - Unsupported file types (will currently just die)
