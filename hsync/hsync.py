@@ -1146,6 +1146,8 @@ def getopts(cmdargs):
     send = optparse.OptionGroup(p, "Send-side options")
     send.add_option("-S", "--source-dir",
         help="Specify the source directory")
+    send.add_option("-z", "--compress-signature",
+        help="Compress the signature file using zlib")
     p.add_option_group(send)
 
     recv = optparse.OptionGroup(p, "Receive-side options")
