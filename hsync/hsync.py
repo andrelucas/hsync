@@ -7,6 +7,7 @@ from __future__ import print_function
 
 from BaseHTTPServer import BaseHTTPRequestHandler
 import grp
+import gzip
 import hashlib
 import logging
 import optparse
@@ -15,8 +16,8 @@ import pwd
 from random import SystemRandom
 import re
 from stat import *
-from cStringIO import StringIO
 import sys
+import tempfile
 import urllib2
 import urlparse
 
@@ -196,35 +197,58 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 def sigfile_write(hashlist, abs_path, opts,
                     use_tmp=False, verb='Generating'):
 
+    compress = (opts.compress_signature is not None and
+                    opts.compress_signature)
+
+    assert not (compress and not use_tmp), \
+        "Compression must be via a temp file"
+
     if not opts.quiet:
-        print("%s signature file %s" % (verb, abs_path))
+        print("%s signature file %s compress %s" %
+                (verb, abs_path, compress))
 
     log.debug("Sorting signature file")
     hashlist.sort(key=lambda fh: fh.fpath)
+
+    writemode = 'w'
 
     if use_tmp:
         r = SystemRandom()
         abs_path_tmp = abs_path + ".%08x" % r.randint(0, 0xffffffff)
         log.debug("Writing temporary hash file '%s'", abs_path_tmp)
-        sigfile = open(abs_path_tmp, 'w')
+        sigfile = open(abs_path_tmp, writemode)
 
     else:
         log.debug("Writing hash file '%s'", abs_path)
-        sigfile = open(abs_path, 'w')
+        sigfile = open(abs_path, writemode)
 
     for fh in hashlist:
         assert fh.hashstr != fh.notsethash, \
             "Hash should not be the 'not set' value"
         print(fh.presentation_format(), file=sigfile)
+
     print("FINAL: %s" % (hash_of_hashlist(hashlist)), file=sigfile)
     sigfile.close()
 
     if use_tmp:
         log.debug("Moving hashfile into place: '%s' -> '%s'",
                     abs_path_tmp, abs_path)
-        if os.rename(abs_path_tmp, abs_path) == -1:
-            raise OSOperationFailedError("Failed to rename '%s' to '%s'",
-                                        abs_path_tmp, abs_path)
+
+        if compress:
+            log.debug("Compressing hashfile '%s' to '%s'", 
+                        abs_path_tmp, abs_path)
+            f_in = open(abs_path_tmp, 'r')
+            f_out = gzip.open(abs_path, 'wb')
+            f_out.writelines(f_in)
+            f_out.close()
+            f_in.close()
+            log.debug("Removing temp hashfile '%s'", abs_path_tmp)
+            os.unlink(abs_path_tmp)
+
+        else:
+            if os.rename(abs_path_tmp, abs_path) == -1:
+                raise OSOperationFailedError("Failed to rename '%s' to '%s'",
+                                            abs_path_tmp, abs_path)
 
     return True
 
@@ -926,6 +950,8 @@ def source_side(opt, args):
         hashfile = 'HSYNC.SIG'
         if opt.hash_file:
             hashfile = opt.hash_file
+        if opt.compress_signature:
+            hashfile += '.gz'
 
         abs_hashfile = os.path.join(opt.source_dir, hashfile)
         log.debug("Synthesised hash file location: '%s'", abs_hashfile)
@@ -942,7 +968,19 @@ def source_side(opt, args):
 
             # Fetch the signature file.
             hashfile_contents = fetch_contents('file://' + abs_hashfile, opt, short_name=opt.hash_file)
-            strfile = hashfile_contents.splitlines()
+
+            if opt.compress_signature:
+                gziptmp = tempfile.NamedTemporaryFile()
+                with gziptmp:
+                    gziptmp.file.write(hashfile_contents)
+                    gziptmp.file.close()
+                    strfile = []
+                    for l in gzip.open(gziptmp.name):
+                        strfile.append(l.rstrip())
+
+            else:
+                strfile = hashfile_contents.splitlines()
+
             existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
 
         hashlist = hashlist_generate(opt.source_dir, opt, existing_hashlist=existing_hl)
@@ -966,6 +1004,9 @@ def dest_side(opt, args):
     if opt.source_url is None:
         log.error("-u/--source-url must be defined for -D/--dest-dir mode")
         return False
+
+    if opt.source_url.endswith('.gz'):  # XXX might fail with funny URLs.
+        log.debug("Assuming compression for signature URL '%s'", opt.source_url)
 
     if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
         log.error("HTTP auth type must be one of 'digest' or 'basic'")
@@ -1146,7 +1187,7 @@ def getopts(cmdargs):
     send = optparse.OptionGroup(p, "Send-side options")
     send.add_option("-S", "--source-dir",
         help="Specify the source directory")
-    send.add_option("-z", "--compress-signature",
+    send.add_option("-z", "--compress-signature", action="store_true",
         help="Compress the signature file using zlib")
     p.add_option_group(send)
 
