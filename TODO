@@ -5,6 +5,8 @@ Bugs
 
 - Documentation
 
+- Reduce memory consumption
+
 - Relative filenames
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
