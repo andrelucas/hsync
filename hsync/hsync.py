@@ -143,7 +143,9 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
             fpath = os.path.join(root, filename)
 
-            if filename == opts.hash_file or filename == opts.hash_file + '.lock':
+            if filename == opts.hash_file or filename == opts.hash_file + '.lock' or \
+                    filename == opts.hash_file + '.gz' or \
+                    filename == opts.hash_file + '.gz.lock':
                 log.debug("Skipping pre-existing hash file '%s'", opts.hash_file)
                 continue
 
@@ -195,10 +197,13 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
 
 def sigfile_write(hashlist, abs_path, opts,
-                    use_tmp=False, verb='Generating'):
+                    use_tmp=False, verb='Generating', no_compress=False):
 
-    compress = (opts.compress_signature is not None and
-                    opts.compress_signature)
+    compress = False
+    if not no_compress:
+        if opts.compress_signature is not None and \
+                opts.compress_signature:
+            compress = True
 
     assert not (compress and not use_tmp), \
         "Compression must be via a temp file"
@@ -296,7 +301,8 @@ def hashlist_from_stringlist(strfile, opts, root=None):
 
 
 def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
-                    opportunistic_write=False, opwrite_path=None):
+                    opportunistic_write=False, opwrite_path=None,
+                    source_side=False):
     '''
     Check the dstpath against the provided hashlist.
 
@@ -313,10 +319,15 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False,
                                         existing_hashlist=existing_hashlist)
 
+    no_compress = False
+    if source_side:
+        no_compress = True
+
     if opportunistic_write:
         assert opwrite_path is not None
         sigfile_write(dst_hashlist, opwrite_path, opts,
-                        use_tmp=True, verb='Caching scanned')
+                        use_tmp=True, verb='Caching scanned',
+                        no_compress=no_compress)
 
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
@@ -1005,8 +1016,7 @@ def dest_side(opt, args):
         log.error("-u/--source-url must be defined for -D/--dest-dir mode")
         return False
 
-    if opt.source_url.endswith('.gz'):  # XXX might fail with funny URLs.
-        log.debug("Assuming compression for signature URL '%s'", opt.source_url)
+    compressed_sig = False
 
     if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
         log.error("HTTP auth type must be one of 'digest' or 'basic'")
@@ -1041,13 +1051,27 @@ def dest_side(opt, args):
         hashurl = _cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
 
+        if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
+            log.debug("Assuming compression for signature URL '%s'", opt.signature_url)
+            compressed_sig = True
+
+        if opt.remote_sig_compressed:
+            log.debug("Force remote signature compression mode")
+            compressed_sig = True
+
     else:
-        hashurl = _cano_url(opt.source_url, slash=True) + opt.hash_file
+        hashfile = opt.hash_file
+        if opt.remote_sig_compressed:
+            hashfile += '.gz'
+            compressed_sig = True
+
+        hashurl = _cano_url(opt.source_url, slash=True) + hashfile
         log.debug("Synthesised signature URL '%s'", hashurl)
 
     # Fetch the signature file.
     if not opt.quiet:
         print("Fetching remote hashfile")
+
     hashfile_contents = fetch_contents(hashurl, opt,
                                         short_name=opt.hash_file,
                                         include_in_total=False)
@@ -1057,7 +1081,17 @@ def dest_side(opt, args):
         log.error("Failed to retrieve signature file from '%s", hashurl)
         return False
 
-    src_strfile = hashfile_contents.splitlines()
+    if compressed_sig:
+        gziptmp = tempfile.NamedTemporaryFile()
+        with gziptmp:
+            gziptmp.file.write(hashfile_contents)
+            gziptmp.file.close()
+            src_strfile = []
+            for l in gzip.open(gziptmp.name):
+                src_strfile.append(l.rstrip())
+    else:
+        src_strfile = hashfile_contents.splitlines()
+
     if not src_strfile[-1].startswith("FINAL:"):
         raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears to be missing!" % hashurl)
 
@@ -1068,6 +1102,7 @@ def dest_side(opt, args):
 
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     abs_lockfile = abs_hashfile + '.lock'
+    log.debug("abs_hashfile '%s' abs_lockfile '%s'", abs_hashfile, abs_lockfile)
     existing_hl = None
 
     if not os.path.isdir(opt.dest_dir):
@@ -1098,7 +1133,8 @@ def dest_side(opt, args):
                                                 src_hashlist, opt,
                                                 existing_hashlist=existing_hl,
                                                 opportunistic_write=True,
-                                                opwrite_path=abs_hashfile)
+                                                opwrite_path=abs_hashfile,
+                                                source_side=False)
 
         if opt.verify_only:
             # Give a report if we're verbose.
@@ -1155,7 +1191,8 @@ def dest_side(opt, args):
 
             if not opt.no_write_hashfile and dst_hashlist is not None:
                 if not sigfile_write(dst_hashlist, abs_hashfile, opt,
-                                            use_tmp=True, verb='Writing'):
+                                            use_tmp=True, verb='Writing',
+                                            no_compress=True):
                     log.error("Failed to write signature file '%s'",
                                 os.path.join(opt.source_dir, opt.hash_file))
                     return False
@@ -1199,6 +1236,8 @@ def getopts(cmdargs):
     recv.add_option("--no-delete", action="store_true",
         help="Never remove files from the destination, even if they're "
             "not present on the source")
+    recv.add_option("-Z", "--remote-sig-compressed", action="store_true",
+        help="Fetch remote HSYNC.SIG.gz instead of HSYNC.SIG")
     recv.add_option("--set-user",
         help="Specify the owner for local files")
     recv.add_option("--set-group",

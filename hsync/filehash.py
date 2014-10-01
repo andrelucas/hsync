@@ -128,7 +128,7 @@ class FileHash(object):
             self.is_file = False
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
-                "%s: File type '%s' is unsupported" % 
+                "%s: File type '%s' is unsupported" %
                 self._type_to_string(ftype))
 
         self.hash_safe = True
@@ -136,7 +136,7 @@ class FileHash(object):
 
     def read_file_contents(self):
         if not self.is_file:
-            raise 
+            raise
 
         log.debug("Reading file '%s' contents", self.fullpath)
         self.hash_file()
@@ -185,7 +185,7 @@ class FileHash(object):
 
         self = cls()
         self.is_local_file = False
-        
+
         if log.isEnabledFor(logging.DEBUG):
             log.debug("init_from_string: %s", string)
 
@@ -197,7 +197,7 @@ class FileHash(object):
         self.group = group
         self.gid = self.mapper.get_gid_for_group(group)
         self.mtime = int(float(mtime))  # Robustness principle - old versions
-                                        # have float mtime. 
+                                        # have float mtime.
         self.size = int(size) # XXX int length?
         self.size_is_known = True
 
@@ -258,7 +258,7 @@ class FileHash(object):
             self.is_file = False
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
-                "%s: File type '%s' is unsupported" % 
+                "%s: File type '%s' is unsupported" %
                 self._type_to_string(mode))
 
         self.hash_safe = True
@@ -323,7 +323,7 @@ class FileHash(object):
             return True
         else:
             return False
-            
+
 
     def compare_contents(self, other):
         if not self.has_real_hash:
