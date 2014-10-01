@@ -25,6 +25,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 
 	def test_open_remove(self):
+		'''Lockfile create and destroy'''
 		l = LockFile(self.locktmp)
 		self.assertIsNotNone(l, "Object created")
 		self.assertTrue(os.path.isfile(self.locktmp), "Lockfile created")
@@ -33,6 +34,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 
 	def test_open_destructor(self):
+		'''Lockfile auto-destroy'''
 		l = LockFile(self.locktmp)
 		self.assertIsNotNone(l, "Object created")
 		self.assertTrue(os.path.isfile(self.locktmp), "Lockfile created")
@@ -41,6 +43,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 
 	def test_open_multi(self):
+		'''Lockfile multi-open failure'''
 		l1 = LockFile(self.locktmp)
 		self.assertIsNotNone(l1, "Object created")
 		self.assertTrue(os.path.isfile(self.locktmp), "Lockfile created")
@@ -52,6 +55,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 
 	def test_context(self):
+		'''Lockfile context manager'''
 		with LockFileManager(self.locktmp):
 			self.assertTrue(os.path.exists(self.locktmp),
 				"Lockfile exists inside manager")
