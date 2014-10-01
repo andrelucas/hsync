@@ -378,7 +378,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         if opts.set_group:
             fh.gid = mapper.default_gid
-            fh.group = mapper.set_default_group
+            fh.group = mapper.default_group
 
         if fpath in dst_fdict:
 
