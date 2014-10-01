@@ -126,7 +126,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			#os.unlink(hashfile)
 
 			if run_diff:
-				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp]
+				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG*', in_tmp, out_tmp]
 				if diff_optlist is not None:
 					diffopt.extend(diff_optlist)
 				ret = subprocess.call(diffopt)
@@ -285,8 +285,19 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		shutil.rmtree(tardir)
 
 
+	def test_web_tarball_compress(self):
+		'''Unpack some tarballs, signature with compression, fetch over www'''
+		os.chdir(self.topdir)
+		tarball = 'zlib-1.2.8.tar.gz'
+		tardir = 'zlib-1.2.8'
+		subprocess.check_call(("tar xzf %s" % tarball).split())
+		self.rundiff(tardir, None, web=True,
+						src_optlist=['-z'], dst_optlist=['-Z'])
+		shutil.rmtree(tardir)
+
+
 	def test_web_tarball_idempotent(self):
-		'''Unpack some tarballs, run a web server, diff and repeat.'''
+		'''Unpack some tarballs, run a web server, diff and repeat'''
 		# Repeat to catch my silly repeat-invocations bug.
 
 		os.chdir(self.topdir)
@@ -294,6 +305,19 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		tardir = 'zlib-1.2.8'
 		subprocess.check_call(("tar xzf %s" % tarball).split())
 		self.rundiff(tardir, None, web=True, clnt_repeat=10)
+		shutil.rmtree(tardir)
+
+
+	def test_web_tarball_compress_idempotent(self):
+		'''Unpack some tarballs, signature gzip, web fetch and repeat'''
+		# Repeat to catch my silly repeat-invocations bug.
+
+		os.chdir(self.topdir)
+		tarball = 'zlib-1.2.8.tar.gz'
+		tardir = 'zlib-1.2.8'
+		subprocess.check_call(("tar xzf %s" % tarball).split())
+		self.rundiff(tardir, None, web=True, clnt_repeat=10, 
+						src_optlist=['-z'], dst_optlist=['-Z'])
 		shutil.rmtree(tardir)
 
 
