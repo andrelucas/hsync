@@ -26,6 +26,7 @@ class LockFile(object):
 			raise i[0], i[1], i[2]
 
 		print('%s\n%s' % (os.getpid(), sys.argv[0]), file=self.lock)
+		self.lock.flush()
 		log.debug("Lock open")
 
 
