@@ -91,7 +91,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		in_tmp = self.in_tmp
 		out_tmp = self.out_tmp
 		hashfile = os.path.join(self.topdir, 'in_tmp', 'HSYNC.SIG')
-		
+
 		shutil.rmtree(in_tmp, True)
 		shutil.rmtree(out_tmp, True)
 
@@ -104,7 +104,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 									'-exec', 'rm', '{}', ';'])
 		else:
 			os.mkdir(out_tmp)
-		
+
 		srcopt = ['-S', in_tmp]
 		if src_optlist is not None:
 			srcopt.extend(src_optlist)
@@ -124,7 +124,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			self.assertTrue(hsync.main(dstopt))
 
 			#os.unlink(hashfile)
-			
+
 			if run_diff:
 				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG', in_tmp, out_tmp]
 				if diff_optlist is not None:
@@ -258,13 +258,13 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		linkpath = os.path.join(self.out_tmp, 'l1')
 		self._checklink(linkpath, 'f1')
 
-	
+
 	def test_local_symlink2(self):
 		'''Symlink copy with relative paths'''
 		self.rundiff('t_sym2_in', None, delete=False)
 		linkpath = os.path.join(self.out_tmp, 'd1/d1.1/l1')
 		self._checklink(linkpath, '../../f1')
-		
+
 
 	def test_local_symlink3_del(self):
 		'''Delete symlink'''
@@ -288,7 +288,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 	def test_web_tarball_idempotent(self):
 		'''Unpack some tarballs, run a web server, diff and repeat.'''
 		# Repeat to catch my silly repeat-invocations bug.
-		
+
 		os.chdir(self.topdir)
 		tarball = 'zlib-1.2.8.tar.gz'
 		tardir = 'zlib-1.2.8'
@@ -310,7 +310,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			"Not-excluded directory does not get copied")
 		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
 			"Excluded directory does not get copied")
-		
+
 
 	def test_exclude_simple_dst(self):
 		'''Check manual -X option works on the client end'''
