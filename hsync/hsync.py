@@ -373,9 +373,16 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
-    direx = set()
+    re_globmatch = re.compile(r'[*?\[\]]')
+
     if opts.exclude_dir:
-        direx = set(opts.exclude_dir)
+        direx = set([d for d in opts.exclude_dir
+                        if not re_globmatch.search(d)])
+        direx_glob = set([d for d in opts.exclude_dir
+                        if not d in direx])
+    else:
+        direx = set()
+        direx_glob = set()
 
     # Now compare the two dictionaries.
     needed = []
@@ -403,6 +410,16 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
             excluded_dirs.add(dpath)
             log.debug("Added exclusion dir: '%s'", dpath)
             exclude = True
+
+        # Process directory globs.
+        if not exclude and fh.is_dir:
+            for glob in direx_glob:
+                if fnmatch.fnmatch(fpath, glob):
+                    log.debug("%s: Exclude dir from glob '%s'", fpath, glob)
+                    dpath = fpath.rstrip(os.sep) + os.sep
+                    excluded_dirs.add(dpath)
+                    log.debug("Added excluson dir: '%s'", dpath)
+                    exclude = True
 
         if not exclude: # No point checking twice.
             for exc in excluded_dirs:
