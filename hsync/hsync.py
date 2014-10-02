@@ -6,6 +6,7 @@
 from __future__ import print_function
 
 from BaseHTTPServer import BaseHTTPRequestHandler
+import fnmatch
 import grp
 import gzip
 import hashlib
@@ -96,11 +97,19 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
     else:
         verb="Scan"
 
+    re_globmatch = re.compile(r'[*?\[\]]')
+
     if opts.exclude_dir:
-        excdirs = set(opts.exclude_dir)
+        excdirs = set([d for d in opts.exclude_dir
+                            if not re_globmatch.search(d)])
+        excdirs_glob = set([d for d in opts.exclude_dir
+                            if not d in excdirs])
     else:
         excdirs = set()
 
+    ##
+    ## Walk the filesystem.
+    ##
     for root, dirs, files in os.walk(srcpath):
 
         relroot = root[len(srcpath)+1:]
@@ -130,14 +139,29 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
         if opts.exclude_dir:
             done_skip = False
+
             for dirname, fulldirname in zip(dirs, fulldirs):
+
+                # String match.
                 if fulldirname in excdirs:
                     if source_mode and opts.verbose:
-                        print("Skipping manually-excluded dir %s" % 
+                        print("Skipping manually-excluded dir %s" %
                                 fulldirname)
                     log.debug("Exclude dir '%s'", fulldirname)
                     dirs.remove(dirname)
                     done_skip=True
+
+                # Glob match.
+                for glob in excdirs_glob:
+                    log.debug("XXX fulldirname %s glob %s", fulldirname, glob)
+                    if fnmatch.fnmatch(fulldirname, glob):
+                        if source_mode and opts.verbose:
+                            print("Skipping manually-excluded dir %s "
+                                    "matching '%s'", fulldirname, glob)
+                        log.debug("Glob exclude dir '%s' glob '%s",
+                                    fulldirname, glob)
+                        dirs.remove(dirname)
+                        done_skip=True
 
             if done_skip:
                 log.debug("dirs now %s", dirs)
@@ -258,7 +282,7 @@ def sigfile_write(hashlist, abs_path, opts,
                     abs_path_tmp, abs_path)
 
         if compress:
-            log.debug("Compressing hashfile '%s' to '%s'", 
+            log.debug("Compressing hashfile '%s' to '%s'",
                         abs_path_tmp, abs_path)
             f_in = open(abs_path_tmp, 'r')
             f_out = gzip.open(abs_path, 'wb')
@@ -1425,7 +1449,7 @@ def main(cmdargs):
         # Try to guess the -u setting if only -U is given.
         if opt.signature_url and not opt.source_url:
             up = urlparse.urlparse(opt.signature_url)
-            opt.source_url = urlparse.urlunparse([up.scheme, up.netloc, 
+            opt.source_url = urlparse.urlunparse([up.scheme, up.netloc,
                                     os.path.dirname(up.path), '', '', ''])
             log.debug("Synthesised source URL '%s' from signature URL '%s'",
                         opt.source_url, opt.signature_url)
