@@ -96,7 +96,15 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
     else:
         verb="Scan"
 
+    if opts.exclude_dir:
+        excdirs = set(opts.exclude_dir)
+    else:
+        excdirs = set()
+
     for root, dirs, files in os.walk(srcpath):
+
+        relroot = root[len(srcpath)+1:]
+        fulldirs = [os.path.join(relroot, d) for d in dirs] # Must be in order.
 
         if log.isEnabledFor(logging.DEBUG):
             logging.debug("os.walk: root %s dirs %s files %s", root, dirs, files)
@@ -106,24 +114,34 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
         # See if the directory list can be pruned.
         if not opts.no_ignore_dirs:
             for dirname in dirs:
+                fulldirname = os.path.join(relroot, dirname)
                 for di in dirignore:
-                    if di.search(dirname):
+                    if di.search(fulldirname):
                         if source_mode and opts.verbose:
                             print("Skipping ignore-able dir %s" % dirname)
                         dirs.remove(dirname)
+                        log.debug("Exclude dir '%s' full path '%s'",
+                            dirname, fulldirname)
 
-        # Likewise, handle the user's exclusions.
+        # Likewise, handle the user's exclusions. This makes the assumption
+        # that the list of exclusions will not be much larger than the list of
+        # directories.
+        # XXX refactor.
+
         if opts.exclude_dir:
             done_skip = False
-            for dirname in opts.exclude_dir:
-                if dirname in dirs:
+            for dirname, fulldirname in zip(dirs, fulldirs):
+                if fulldirname in excdirs:
                     if source_mode and opts.verbose:
-                        print("Skipping manually-excluded dir %s" % dirname)
-                    log.debug("Exclude dir '%s'", dirname)
+                        print("Skipping manually-excluded dir %s" % 
+                                fulldirname)
+                    log.debug("Exclude dir '%s'", fulldirname)
                     dirs.remove(dirname)
                     done_skip=True
+
             if done_skip:
                 log.debug("dirs now %s", dirs)
+
 
         # Handle directories.
         for n, dirname in enumerate(dirs, start=1):

@@ -353,6 +353,44 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			"Excluded directory does not get copied")
 
 
+	def test_exclude_path_src(self):
+		'''Check -X works with full paths (src)'''
+		# Make sure the diff works for non-root paths'''
+		# Have to manually check, diff is useless here.
+		self.rundiff('t_exclude3_in', 't_exclude3_out',
+			delete=False, src_optlist=['-X', 'd2/d2.1_exclude'], run_diff=False)
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
+			"Not-excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+			"Excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
+			"Not-excluded directory does not get copied")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd2')),
+			"Not-excluded directory does not get copied")
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp,
+			'd2/d2.1_exclude')),
+			"Excluded directory does not get copied")
+
+
+	def test_exclude_path_dst(self):
+		'''Check -X works with full paths (dst)'''
+		# Make sure the diff works for non-root paths'''
+		# Have to manually check, diff is useless here.
+		self.rundiff('t_exclude3_in', 't_exclude3_out',
+			delete=False, dst_optlist=['-X', 'd2/d2.1_exclude'], run_diff=False)
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
+			"Not-excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+			"Excluded directory is in the source")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
+			"Not-excluded directory does not get copied")
+		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd2')),
+			"Not-excluded directory does not get copied")
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp,
+			'd2/d2.1_exclude')),
+			"Excluded directory does not get copied")
+
+
 	def test_signature_url(self):
 		'''Check the signature-outside-tree feature works'''
 		sigurl = '%s/t_sigoutside1/HSYNC.SIG' % self.topdir
