@@ -157,7 +157,7 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                     if fnmatch.fnmatch(fulldirname, glob):
                         if source_mode and opts.verbose:
                             print("Skipping manually-excluded dir %s "
-                                    "matching '%s'", fulldirname, glob)
+                                    "matching '%s'" % (fulldirname, glob))
                         log.debug("Glob exclude dir '%s' glob '%s",
                                     fulldirname, glob)
                         dirs.remove(dirname)
