@@ -553,7 +553,7 @@ def fetch_needed(needed, source, opts):
                 log.debug("Fetching: '%s' dest_missing %s contents_differ %s",
                     fh.fpath, fh.dest_missing, fh.contents_differ)
 
-                if not opts.quiet:
+                if not opts.quiet and sys.stdout.isatty():
                     print("F: %s" % fh.fpath, end='')
 
                 # Fetch_contents will display progress information itself.
