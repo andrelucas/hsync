@@ -999,6 +999,11 @@ def _cano_url(url, slash=False):
     return url
 
 
+
+##
+## Source-side.
+##
+
 def source_side(opt, args):
 
     # If there's an existing hashfile, optionally use it to try to reduce the
@@ -1068,6 +1073,10 @@ def source_side(opt, args):
             log.error("Send-side generate failed")
             return False
 
+
+##
+## Dest-side.
+##
 
 def dest_side(opt, args):
 
