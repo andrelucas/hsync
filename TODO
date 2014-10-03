@@ -17,6 +17,9 @@ Bugs
 
 - Test coverage of hsync.py isn't good enough (nosetests --coverage --cover-html).
 
+- Remove excluded dirs from the old .SIG file, as well as from the scan.
+
+
 Features
 
 - Add a built-in way to remove an old lockfile
