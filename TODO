@@ -13,10 +13,6 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- -X doesn't appear to be working on server side
-  - Actually, it doesn't work with paths with more than one element - stupid
-    implementation. Fix it along with wildcards.
-
 - Test coverage of hsync.py isn't good enough (nosetests --coverage --cover-html).
 
 - Remove excluded dirs from the old .SIG file, as well as from the scan.
