@@ -17,6 +17,7 @@ import unittest
 import urllib2
 
 from hsync import hsync
+from hsync.exceptions import *
 
 log = logging.getLogger()
 
@@ -67,6 +68,14 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		shutil.rmtree(self.out_tmp, True)
 
 
+	def _just_remove(self, path):
+		if os.path.exists(path):
+			if os.path.isdir(path):
+				shutil.rmtree(path, True)
+			else:
+				os.unlink(path)
+
+
 	def rundiff(self, in_dir, out_dir=None, delete=True,
 				src_optlist=None, dst_optlist=None, web=False,
 				diff_optlist=None, run_diff=True,
@@ -92,10 +101,16 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		out_tmp = self.out_tmp
 		hashfile = os.path.join(self.topdir, 'in_tmp', 'HSYNC.SIG')
 
-		shutil.rmtree(in_tmp, True)
-		shutil.rmtree(out_tmp, True)
+		self._just_remove(in_tmp)
+		self._just_remove(out_tmp)
 
-		shutil.copytree(os.path.join(self.topdir, in_dir), in_tmp, symlinks=True)
+		in_dir = os.path.join(self.topdir, in_dir)
+		if os.path.isdir(in_dir):
+			shutil.copytree(in_dir, in_tmp, symlinks=True)
+		else:
+			# Allows for deliberate tripping of the file-where-dir-expected error.
+			shutil.copyfile(in_dir, in_tmp)
+
 		subprocess.check_call(['find', in_tmp, '-name', '.gitignore',
 								'-exec', 'rm', '{}', ';'])
 		if out_dir is not None:
@@ -135,8 +150,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 				self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
 
 		if delete:
-			shutil.rmtree(in_tmp)
-			shutil.rmtree(out_tmp)
+			self._just_remove(in_tmp)
+			self._just_remove(out_tmp)
 		else:
 			return (in_tmp, out_tmp)
 
@@ -457,3 +472,10 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Second run should puke.
 		with self.assertRaises(hsync.TruncatedHashfileError):
 			self.runverify('t_truncdetect1_in', munge_input=do_trunc)
+
+
+	def test_source_errorpaths1(self):
+		'''Exercise the source-not-dir errorpath'''
+		with self.assertRaises(NonDirFoundAtDirLocationError):
+			self.rundiff('t_notadirectory1_in')
+
