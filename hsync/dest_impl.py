@@ -14,6 +14,7 @@ from filehash import *
 from hashlist_op_impl import (hashlist_generate, sigfile_write,
 								 hashlist_from_stringlist, hashlist_check)
 from lockfile import LockFileManager
+from utility import cano_url
 
 log = logging.getLogger()
 
@@ -21,18 +22,6 @@ log = logging.getLogger()
 ##
 ## Dest-side.
 ##
-
-
-def _cano_url(url, slash=False):
-    log.debug("_cano_url: %s", url)
-    up = urlparse.urlparse(url)
-    log.debug("urlparse: %s", up.geturl())
-    if up.scheme == '':
-        url = 'file://' + url
-        log.debug("Add scheme, URL=%s", url)
-    if slash and not url.endswith("/"):
-        url += "/"
-    return url
 
 
 def dest_side(opt, args):
@@ -80,7 +69,7 @@ def dest_side(opt, args):
         compressed_sig = True
 
     if opt.signature_url:
-        hashurl = _cano_url(opt.signature_url)
+        hashurl = cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
 
         if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
@@ -97,7 +86,7 @@ def dest_side(opt, args):
             compressed_sig = True
             shortname += '.gz'
 
-        hashurl = _cano_url(opt.source_url, slash=True) + hashfile
+        hashurl = cano_url(opt.source_url, slash=True) + hashfile
         log.debug("Synthesised signature URL '%s'", hashurl)
 
     # Fetch the signature file.
@@ -129,7 +118,7 @@ def dest_side(opt, args):
 
     src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
 
-    opt.source_url = _cano_url(opt.source_url, slash=True)
+    opt.source_url = cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
 
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)

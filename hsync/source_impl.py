@@ -12,6 +12,7 @@ from filehash import *
 from hashlist_op_impl import (hashlist_generate, sigfile_write,
 								hashlist_from_stringlist)
 from lockfile import LockFileManager
+from utility import cano_url
 
 log = logging.getLogger()
 
@@ -19,18 +20,6 @@ log = logging.getLogger()
 ##
 ## Source-side.
 ##
-
-
-def _cano_url(url, slash=False):
-    log.debug("_cano_url: %s", url)
-    up = urlparse.urlparse(url)
-    log.debug("urlparse: %s", up.geturl())
-    if up.scheme == '':
-        url = 'file://' + url
-        log.debug("Add scheme, URL=%s", url)
-    if slash and not url.endswith("/"):
-        url += "/"
-    return url
 
 
 def source_side(opt, args):
@@ -41,7 +30,7 @@ def source_side(opt, args):
     abs_hashfile = None
 
     if opt.signature_url:
-        hashurl = _cano_url(opt.signature_url)
+        hashurl = cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
         up = urlparse.urlparse(hashurl)
         if up.scheme != 'file':
