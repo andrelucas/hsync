@@ -23,8 +23,8 @@ class UidGidMapper(object):
         self.default_uid = os.getuid()
         self.default_gid = os.getgid()
 
-        # Let these throw KeyError - if we can't find our own username and group
-        # given our own uid and gid, we're in bad shape.
+        # Let these throw KeyError - if we can't find our own username and
+        # group given our own uid and gid, we're in bad shape.
         self.default_name = pwd.getpwuid(self.default_uid).pw_name
         self.default_group = grp.getgrgid(self.default_gid).gr_name
 

@@ -114,7 +114,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		subprocess.check_call(['find', in_tmp, '-name', '.gitignore',
 								'-exec', 'rm', '{}', ';'])
 		if out_dir is not None:
-			shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp, symlinks=True)
+			shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp,
+							symlinks=True)
 			subprocess.check_call(['find', out_tmp, '-name', '.gitignore',
 									'-exec', 'rm', '{}', ';'])
 		else:
@@ -133,7 +134,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 				log.debug("Fetch URL: %s", in_url)
 
 			#time.sleep(20) # XXX
-			dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u', in_url, '-d']
+			dstopt = ['--no-write-hashfile', '-D', out_tmp, '-u',
+						in_url, '-d']
 			if dst_optlist is not None:
 				dstopt.extend(dst_optlist)
 			self.assertTrue(hsync.main(dstopt))
@@ -141,13 +143,15 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			#os.unlink(hashfile)
 
 			if run_diff:
-				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG*', in_tmp, out_tmp]
+				diffopt = ['diff', '-Purd', '-x', 'HSYNC.SIG*',
+							in_tmp, out_tmp]
 				if diff_optlist is not None:
 					diffopt.extend(diff_optlist)
 				ret = subprocess.call(diffopt)
 				# if ret != 0:
 				# 	subprocess.call("bash", shell=True)
-				self.assertEqual(ret, 0, "diff -Purd should return 0 ('no differences')")
+				self.assertEqual(ret, 0,
+							"diff -Purd should return 0 ('no differences')")
 
 		if delete:
 			self._just_remove(in_tmp)
@@ -156,7 +160,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			return (in_tmp, out_tmp)
 
 
-	def runverify(self, in_dir, out_dir=None, munge_output=None, munge_input=None,
+	def runverify(self, in_dir, out_dir=None,
+					munge_output=None, munge_input=None,
 					src_optlist=None, dst_optlist=None, vfy_optlist=None):
 		'''
 		Run hsync, optionally change something, then run the verifier.
@@ -263,7 +268,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 	def _checklink(self, linkpath, target):
 		lstat = os.lstat(linkpath)
 		self.assertTrue(stat.S_ISLNK(lstat.st_mode), "Symlink created")
-		self.assertEqual(os.readlink(linkpath), target, "Symlink target correct")
+		self.assertEqual(os.readlink(linkpath), target,
+							"Symlink target correct")
 
 
 	def test_local_symlink1(self):
@@ -287,7 +293,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Make sure it didn't delete the target.
 		fpath = os.path.join(self.out_tmp, 'f1')
 		self.assertTrue(os.path.exists(fpath), "Didn't delete target")
-		self.assertTrue(stat.S_ISREG(os.lstat(fpath).st_mode), "Didn't transmute target")
+		self.assertTrue(stat.S_ISREG(os.lstat(fpath).st_mode),
+							"Didn't transmute target")
 
 
 	def test_web_tarball(self):
@@ -347,7 +354,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory does not get copied")
-		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp,
+						'd2_exclude')),
 			"Excluded directory does not get copied")
 
 
@@ -360,11 +368,13 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		#subprocess.call("bash", shell=True)
 		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
 			"Not-excluded directory is in the source")
-		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2_exclude')),
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
+						'd2_exclude')),
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory gets copied")
-		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp, 'd2_exclude')),
+		self.assertTrue(not os.path.exists(os.path.join(self.out_tmp,
+						'd2_exclude')),
 			"Excluded directory does not get copied")
 
 
@@ -373,10 +383,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Make sure the diff works for non-root paths'''
 		# Have to manually check, diff is useless here.
 		self.rundiff('t_exclude3_in', 't_exclude3_out',
-			delete=False, src_optlist=['-X', 'd2/d2.1_exclude'], run_diff=False)
+			delete=False, src_optlist=['-X', 'd2/d2.1_exclude'],
+			run_diff=False)
 		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
 			"Not-excluded directory is in the source")
-		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
+						'd2/d2.1_exclude')),
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory does not get copied")
@@ -392,10 +404,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Make sure the diff works for non-root paths'''
 		# Have to manually check, diff is useless here.
 		self.rundiff('t_exclude3_in', 't_exclude3_out',
-			delete=False, dst_optlist=['-X', 'd2/d2.1_exclude'], run_diff=False)
+			delete=False, dst_optlist=['-X', 'd2/d2.1_exclude'],
+			run_diff=False)
 		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
 			"Not-excluded directory is in the source")
-		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
+			'd2/d2.1_exclude')),
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory does not get copied")
@@ -411,10 +425,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Make sure the diff works for non-root paths'''
 		# Have to manually check, diff is useless here.
 		self.rundiff('t_exclude3_in', 't_exclude3_out',
-			delete=False, src_optlist=['-X', '*/d2.1_exclude'], run_diff=False)
+			delete=False, src_optlist=['-X', '*/d2.1_exclude'],
+			run_diff=False)
 		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
 			"Not-excluded directory is in the source")
-		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
+			'd2/d2.1_exclude')),
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory does not get copied")
@@ -430,10 +446,12 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		# Make sure the diff works for non-root paths'''
 		# Have to manually check, diff is useless here.
 		self.rundiff('t_exclude3_in', 't_exclude3_out',
-			delete=False, dst_optlist=['-X', '*/d2.1_exclude'], run_diff=False)
+			delete=False, dst_optlist=['-X', '*/d2.1_exclude'],
+			run_diff=False)
 		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
 			"Not-excluded directory is in the source")
-		self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd2/d2.1_exclude')),
+		self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
+			'd2/d2.1_exclude')),
 			"Excluded directory is in the source")
 		self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
 			"Not-excluded directory does not get copied")

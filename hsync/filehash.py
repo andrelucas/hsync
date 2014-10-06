@@ -327,9 +327,11 @@ class FileHash(object):
 
     def compare_contents(self, other):
         if not self.has_real_hash:
-            raise NotHashableException("%s (lhs) isn't comparable" % self.fpath)
+            raise NotHashableException(
+                    "%s (lhs) isn't comparable" % self.fpath)
         if not other.has_real_hash:
-            raise NotHashableException("%s (rhs) isn't comparable" % other.fpath)
+            raise NotHashableException(
+                    "%s (rhs) isn't comparable" % other.fpath)
 
         log.debug("compare_contents: %s, %s", self, other)
         return self.hashstr == other.hashstr
@@ -344,7 +346,8 @@ class FileHash(object):
         otherwise False.
         '''
 
-        # Since we're comparing, let's assume the remote at least has the file.
+        # Since we're comparing, let's assume the remote at least has the
+        # file.
         self.dest_missing = False
 
         differ_metadata = False
@@ -375,7 +378,8 @@ class FileHash(object):
                 log.debug("Object GIDs differ")
                 differ_metadata = True
 
-        # If enabled, check the mtime and if it matches, consider ourselves done.
+        # If enabled, check the mtime and if it matches, consider ourselves
+        # done.
         if trust_mtime:
             if self.mtime == other.mtime:
                 log.debug("'%s': mtime match, assuming ok", self.fpath)
@@ -468,7 +472,8 @@ class FileHash(object):
 
         spath_full = os.path.join(topdir, self.fpath)
         norm_spath_full = os.path.normpath(spath_full)
-        # log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full, norm_spath_full)
+        # log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full,
+        # norm_spath_full)
 
         norm_lpath_full = os.path.dirname(norm_spath_full)
         # log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
@@ -476,7 +481,8 @@ class FileHash(object):
         # target.
         tpath_full = os.path.join(topdir, norm_lpath_full, self.link_target)
         norm_tpath_full = os.path.normpath(tpath_full)
-        # log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full, norm_tpath_full)
+        # log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full,
+        # norm_tpath_full)
 
         if norm_tpath_full.startswith(topdir):
             # We're under the source path -> relative link.
@@ -493,7 +499,8 @@ class FileHash(object):
                     self.fpath, self.link_target, norm_tpath_full)
 
             # We're not under the source path -> absolute link.
-            log.debug("link cannot be made relative : '%s' -> '%s'", tpath, norm_tpath_full)
+            log.debug("link cannot be made relative : '%s' -> '%s'",
+                        tpath, norm_tpath_full)
             return norm_tpath_full
 
 

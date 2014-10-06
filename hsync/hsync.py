@@ -76,7 +76,8 @@ def getopts(cmdargs):
     p.add_option_group(recv)
 
     recv.add_option("-U", "--signature-url",
-        help="Specify the signature file's URL [default: <source_url>/HSYNC.SIG]")
+        help="Specify the signature file's URL [default: "
+                "<source_url>/HSYNC.SIG]")
 
     meta = optparse.OptionGroup(p, "Other options")
     meta.add_option("--version", action="store_true",
@@ -86,8 +87,8 @@ def getopts(cmdargs):
     meta.add_option("--fail-on-errors", action="store_true",
         help="Fail on any error. Default is to try to carry on")
     meta.add_option("-c", "--always-checksum", action="store_true",
-        help="Always read and re-checksum files, never trust file modification"
-            "times or other metadata")
+        help="Always read and re-checksum files, never trust file "
+            "modification times or other metadata")
     meta.add_option("--hash-file", default="HSYNC.SIG",
         help="Specify the hash filename [default: %default]")
     meta.add_option("--no-ignore-dirs", action="store_true",

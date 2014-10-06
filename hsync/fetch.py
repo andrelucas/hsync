@@ -280,7 +280,8 @@ def fetch_needed(needed, source, opts):
                         print('done')
 
                     if chk.hexdigest() != fh.hashstr:
-                        log.warn("File '%s' failed checksum verification!", fh.fpath)
+                        log.warn("File '%s' failed checksum verification!",
+                                    fh.fpath)
                         errorCount += 1
                         continue
 

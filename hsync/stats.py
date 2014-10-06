@@ -22,7 +22,7 @@ class StatsCollector(object):
 		self.set_attributes(attrlist)
 		self._freeze()
 
-	
+
 	@staticmethod
 	def init(name, attrlist):
 		'''
@@ -73,11 +73,11 @@ class StatsCollector(object):
 		self._unfreeze()
 		attrset = set(attrlist)
 
-		# Current attributes.	
+		# Current attributes.
 		oldkeys = set(self._existing_keys())
 		# Keys to add, in attrlist but not in oldkeys.
 		newkeys = attrset - oldkeys
-		# Keys to remove, in oldkeys but not in attrlist.	
+		# Keys to remove, in oldkeys but not in attrlist.
 		delkeys = oldkeys - attrset
 
 		self._add(newkeys)
@@ -102,7 +102,7 @@ class StatsCollector(object):
 		oldkeys = set(self._existing_keys())
 		newkeys = attrset - oldkeys
 		self._add(newkeys)
-		log.debug("result: %s", ', '.join(self._existing_keys()))		
+		log.debug("result: %s", ', '.join(self._existing_keys()))
 		self._freeze()
 
 
@@ -127,7 +127,8 @@ class StatsCollector(object):
 		self._freeze()
 
 
-	# http://stackoverflow.com/questions/3137558/python-can-a-class-forbid-clients-setting-new-attributes
+	# http://stackoverflow.com/questions/3137558/\
+	# python-can-a-class-forbid-clients-setting-new-attributes
 	def __setattr__(self, name, value):
 	  	if not self.__is_frozen:
 	  		return super(self.__class__, self).__setattr__(name, value)

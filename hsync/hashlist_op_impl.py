@@ -16,7 +16,8 @@ from filehash import *
 
 log = logging.getLogger()
 
-def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
+def hashlist_generate(srcpath, opts, source_mode=True,
+                        existing_hashlist=None):
     '''
     Generate the hashlist for the given path.
 
@@ -92,10 +93,11 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
     for root, dirs, files in os.walk(srcpath):
 
         relroot = root[len(srcpath)+1:]
-        fulldirs = [os.path.join(relroot, d) for d in dirs] # Must be in order.
+        fulldirs = [os.path.join(relroot, d) for d in dirs]
 
         if log.isEnabledFor(logging.DEBUG):
-            logging.debug("os.walk: root %s dirs %s files %s", root, dirs, files)
+            logging.debug("os.walk: root %s dirs %s files %s",
+                            root, dirs, files)
 
         dirs.sort()
 
@@ -153,7 +155,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                                             root=srcpath,
                                             defer_read=defer_fs_read)
             if opts.progress:
-                print("D: %s dir %s (dir-in-dir %d/%d)" % (verb, fpath, n, len(dirs)))
+                print("D: %s dir %s (dir-in-dir %d/%d)" % 
+                        (verb, fpath, n, len(dirs)))
             elif opts.verbose:
                 print("%s dir: %s" % (verb, fpath))
             hashlist.append(fh)
@@ -164,10 +167,12 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
 
             fpath = os.path.join(root, filename)
 
-            if filename == opts.hash_file or filename == opts.hash_file + '.lock' or \
+            if filename == opts.hash_file or \
+                    filename == opts.hash_file + '.lock' or \
                     filename == opts.hash_file + '.gz' or \
                     filename == opts.hash_file + '.gz.lock':
-                log.debug("Skipping pre-existing hash file '%s'", opts.hash_file)
+                log.debug("Skipping pre-existing hash file '%s'",
+                            opts.hash_file)
                 continue
 
             skipped = False
@@ -190,7 +195,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
             elif opts.verbose:
                 print("%s file: %s" % (verb, fpath))
 
-            fh = FileHash.init_from_file(fpath, trim=opts.trim_path, root=srcpath,
+            fh = FileHash.init_from_file(fpath, trim=opts.trim_path,
+                                            root=srcpath,
                                             defer_read=defer_fs_read)
 
             if not opts.always_checksum and fh.is_file:
@@ -200,7 +206,8 @@ def hashlist_generate(srcpath, opts, source_mode=True, existing_hashlist=None):
                 if lookup_existing is not None:
                     if fh.fpath in lookup_existing:
                         oldfh = lookup_existing[fh.fpath]
-                        log.debug("'%s': Found old entry (%s)", fh.fpath, repr(oldfh))
+                        log.debug("'%s': Found old entry (%s)",
+                                    fh.fpath, repr(oldfh))
                         if fh.safe_to_skip(oldfh):
                             do_checksum = False
                             fh.inherit_attributes(oldfh)
@@ -385,7 +392,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         # Process exclusions.
         if fh.is_dir and fpath in direx:
             log.debug("%s: Exclude dir", fpath)
-            dpath = fpath.rstrip(os.sep) + os.sep # Make sure it ends in a slash.
+            dpath = fpath.rstrip(os.sep) + os.sep # Make sure it ends in '/'.
             excluded_dirs.add(dpath)
             log.debug("Added exclusion dir: '%s'", dpath)
             exclude = True
@@ -425,8 +432,8 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
                                     trust_mtime=(not opts.always_checksum)):
                 log.debug("%s: needed", fpath)
                 # Store a reference to the object at the destination.
-                # This can be used to update the dest's HSYNC.SIG file and save
-                # on rechecks.
+                # This can be used to update the dest's HSYNC.SIG file and
+                # save on rechecks.
                 fh.associated_dest_object = dst_fdict[fpath]
                 needed.append(fh)
 
