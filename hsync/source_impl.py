@@ -22,6 +22,8 @@ log = logging.getLogger()
 ##
 
 
+
+
 def source_side(opt, args):
     '''
     Implement the source-side of hsync.
@@ -36,6 +38,18 @@ def source_side(opt, args):
     '''
     # If there's an existing hashfile, optionally use it to try to reduce the
     # amount of scanning.
+
+    abs_hashfile = _generate_hashfile_url(opt)
+
+    # Lock the source-side hash file.
+    abs_lockfile = abs_hashfile + '.lock'
+
+    # Generate the new hashfile.
+    with LockFileManager(abs_lockfile):
+        return source_generate(abs_hashfile, opt)
+
+
+def _generate_hashfile_url(opt):
 
     abs_hashfile = None
 
@@ -59,12 +73,7 @@ def source_side(opt, args):
         abs_hashfile = os.path.join(opt.source_dir, hashfile)
         log.debug("Synthesised hash file location: '%s'", abs_hashfile)
 
-    # Lock the source-side hash file.
-    abs_lockfile = abs_hashfile + '.lock'
-
-    # Generate the new hashfile.
-    with LockFileManager(abs_lockfile):
-        return source_generate(abs_hashfile, opt)
+    return abs_hashfile
 
 
 def _read_hashlist(abs_hashfile, opt):
