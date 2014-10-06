@@ -569,26 +569,6 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
     return outfile
 
 
-<<<<<<< HEAD
-=======
-def _cano_url(url, slash=False):
-    log.debug("_cano_url: %s", url)
-    up = urlparse.urlparse(url)
-    log.debug("urlparse: %s", up.geturl())
-    if up.scheme == '':
-        url = 'file://' + url
-        log.debug("Add scheme, URL=%s", url)
-    if slash and not url.endswith("/"):
-        url += "/"
-    return url
-
-
-
-
-
-
-
->>>>>>> 11857c9b20e27eab51c9aa585eeaa1b43b13a04c
 def getopts(cmdargs):
 
     p = optparse.OptionParser()
