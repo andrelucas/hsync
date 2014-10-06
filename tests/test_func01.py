@@ -476,6 +476,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 
 	def test_source_errorpaths1(self):
 		'''Exercise the source-not-dir errorpath'''
-		with self.assertRaises(NonDirFoundAtDirLocationError):
+		with self.assertRaises(NotADirectoryError):
 			self.rundiff('t_notadirectory1_in')
+
 

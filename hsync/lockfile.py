@@ -6,6 +6,8 @@ import logging
 import os
 import sys
 
+from exceptions import *
+
 
 log = logging.getLogger()
 
@@ -13,9 +15,14 @@ log = logging.getLogger()
 class LockFile(object):
 
 	def __init__(self, lockfilename):
-		log.debug("Attempting to open lockfile %s", lockfilename)
+
 		self.lockfilename = lockfilename
 		self.lock = None
+		lockdir = os.path.dirname(lockfilename)
+		if not os.path.isdir(lockdir):
+			raise NotADirectoryError("Attempting to create lockfile %s "
+										"in non-directory" % lockfilename)
+		log.debug("Attempting to open lockfile %s", lockfilename)
 		try:
 			lock = os.open(lockfilename, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
 			self.lock = os.fdopen(lock, 'w')
@@ -32,7 +39,7 @@ class LockFile(object):
 
 	def remove(self):
 		log.debug("LockFile remove()")
-		if self.lock is not None:
+		if hasattr(self, 'lock') and self.lock is not None:
 			log.debug("Removing lockfile")
 			self.lock.close()
 			self.lock = None

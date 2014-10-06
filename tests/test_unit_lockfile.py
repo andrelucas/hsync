@@ -1,5 +1,7 @@
 # Unit tests for lockfile
 
+from __future__ import print_function
+
 import inspect
 import logging
 import os
@@ -7,6 +9,7 @@ import shutil
 from time import sleep
 import unittest
 
+from hsync.exceptions import NotADirectoryError
 from hsync.lockfile import LockFile, LockFileManager
 
 
@@ -62,3 +65,17 @@ class TestUnitLockFileTestCase(unittest.TestCase):
 
 		self.assertFalse(os.path.isfile(self.locktmp), "Lockfile removed")
 
+
+
+	def test_lock_in_non_dir(self):
+		'''Shouldn't try to create a lockfile under a non-directory'''
+		regfilename = os.path.join(self.topdir, 'not_a_directory')
+		regfile_subdir_lock = os.path.join(regfilename, 'bad')
+		regfile = open(regfilename, 'w')
+		print("hello", file=regfile)
+		regfile.close()
+		self.assertTrue(os.path.isfile(regfilename), 'Regular file created')
+		with self.assertRaises(NotADirectoryError):
+			l = LockFile(regfile_subdir_lock)
+
+		os.unlink(regfilename)

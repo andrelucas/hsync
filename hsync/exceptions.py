@@ -15,4 +15,7 @@ class URLMustBeOfTypeFileError(Exception): pass
 
 class ContentsFetchFailedError(Exception): pass
 
+# lockfile.py
+class NotADirectoryError(OSError): pass
+
 
