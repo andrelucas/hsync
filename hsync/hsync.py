@@ -809,7 +809,7 @@ def delete_not_needed(not_needed, target, opts):
     Remove files from the destination that are not present on the source.
     '''
     dirs_to_delete = []
-    errorCount = 0
+    error_count = 0
 
     for fh in not_needed:
         if fh.is_dir:
@@ -821,7 +821,11 @@ def delete_not_needed(not_needed, target, opts):
             log.debug("delete_not_needed: %s", fullpath)
             if not opts.quiet:
                 print("Remove file: %s" % fh.fpath)
-            os.remove(fullpath)
+            try:
+                os.remove(fullpath)
+            except OSError as e:
+                log.warn("Failed to remove file %s: %s", fh.fpath, e)
+                error_count += 1
 
     if dirs_to_delete:
         # Sort the delete list by filename, then reverse so it's depth-
@@ -832,10 +836,14 @@ def delete_not_needed(not_needed, target, opts):
             if not opts.quiet:
                 print("Remove dir: %s" % d.fpath)
             log.debug("Deleting directory '%s'", fullpath)
-            os.rmdir(fullpath)
+            try:
+                os.rmdir(fullpath)
+            except OSError as e:
+                log.warn("Failed to remove dir %s: %s", d.fpath, e)
+                error_count += 1
 
-    if errorCount:
-        log.warn("Delete failed with %d errors", errorCount)
+    if error_count:
+        log.warn("Delete failed with %d errors", error_count)
         return False
 
     return True
