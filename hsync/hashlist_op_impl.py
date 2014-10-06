@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import fnmatch
+import gzip
 import logging
 import os
 from random import SystemRandom

@@ -9,3 +9,10 @@ class ObjectInTheWayError(Exception): pass
 class NonDirFoundAtDirLocationError(ObjectInTheWayError): pass
 class NonLinkFoundAtLinkLocationError(ObjectInTheWayError): pass
 
+class TruncatedHashfileError(Exception): pass
+
+class URLMustBeOfTypeFileError(Exception): pass
+
+class ContentsFetchFailedError(Exception): pass
+
+

@@ -3,8 +3,10 @@
 from __future__ import print_function
 
 from fnmatch import fnmatch
+import gzip
 import logging
 import os
+import tempfile
 import urlparse
 
 from fetch import fetch_contents, fetch_needed, delete_not_needed

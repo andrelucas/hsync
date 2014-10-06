@@ -8,7 +8,6 @@ from __future__ import print_function
 from BaseHTTPServer import BaseHTTPRequestHandler
 import fnmatch
 import grp
-import gzip
 import hashlib
 import logging
 import optparse
@@ -34,11 +33,6 @@ from stats import StatsCollector
 
 
 log = logging.getLogger()
-
-class URLMustBeOfTypeFileError(Exception): pass
-class ContentsFetchFailedError(Exception): pass
-class TruncatedHashfileError(Exception): pass
-
 
 
 def getopts(cmdargs):
