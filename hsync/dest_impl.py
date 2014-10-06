@@ -47,11 +47,13 @@ def dest_side(opt, args):
         auth_opener = None
         if opt.http_auth_type == 'digest':
             log.debug("Configuring digest authentication")
-            auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
+            auth_opener = urllib2.build_opener(
+                            urllib2.DigestAuthHandler(pwmgr))
 
         else:
             log.debug("Configuring basic authentication")
-            auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
+            auth_opener = urllib2.build_opener(
+                            urllib2.HTTPBasicAuthHandler(pwmgr))
 
         urllib2.install_opener(auth_opener)
 
@@ -72,8 +74,9 @@ def dest_side(opt, args):
         hashurl = cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
 
-        if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
-            log.debug("Assuming compression for signature URL '%s'", opt.signature_url)
+        if opt.signature_url.endswith('.gz'):
+            log.debug("Assuming compression for signature URL '%s'",
+                        opt.signature_url)
             compressed_sig = True
             shortname += '.gz'
 
@@ -114,16 +117,18 @@ def dest_side(opt, args):
         src_strfile = hashfile_contents.splitlines()
 
     if not src_strfile[-1].startswith("FINAL:"):
-        raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears to be missing!" % hashurl)
-
-    src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
+        raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears "
+                                        "to be missing!" % hashurl)
+    src_hashlist = hashlist_from_stringlist(src_strfile, opt,
+                                                root=opt.dest_dir)
 
     opt.source_url = cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
 
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     abs_lockfile = abs_hashfile + '.lock'
-    log.debug("abs_hashfile '%s' abs_lockfile '%s'", abs_hashfile, abs_lockfile)
+    log.debug("abs_hashfile '%s' abs_lockfile '%s'",
+                abs_hashfile, abs_lockfile)
     existing_hl = None
 
     if not os.path.isdir(opt.dest_dir):
@@ -140,16 +145,17 @@ def dest_side(opt, args):
 
             # Fetch the signature file.
             hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                                        short_name=opt.hash_file,
-                                                        remote_flag=False,
-                                                        include_in_total=False)
+                                                    short_name=opt.hash_file,
+                                                    remote_flag=False,
+                                                    include_in_total=False)
             dst_strfile = hashfile_contents.splitlines()
-            existing_hl = hashlist_from_stringlist(dst_strfile, opt, root=opt.dest_dir)
+            existing_hl = hashlist_from_stringlist(dst_strfile, opt,
+                                                    root=opt.dest_dir)
 
         # Calculate the differences to the local filesystem.
         #
-        # Since we've just done a scan, write the results to the disk - then, if
-        # Something goes wrong, at least we've saved the scan results.
+        # Since we've just done a scan, write the results to the disk - then,
+        # if something goes wrong, at least we've saved the scan results.
         (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
                                                 src_hashlist, opt,
                                                 existing_hashlist=existing_hl,
@@ -200,7 +206,8 @@ def dest_side(opt, args):
         else:
             fetch_added = fetch_needed(needed, opt.source_url, opt)
             if fetch_added is not None:
-                delete_status = delete_not_needed(not_needed, opt.dest_dir, opt)
+                delete_status = delete_not_needed(not_needed, opt.dest_dir,
+                                                    opt)
 
             if (fetch_added is None or not delete_status):
                 log.error("Sync failed")
