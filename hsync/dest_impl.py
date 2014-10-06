@@ -23,14 +23,13 @@ log = logging.getLogger()
 ## Dest-side.
 ##
 
+def _configure_http_auth(opt):
 
-def dest_side(opt, args):
+    '''
+    Configure HTTP authentication.
 
-    if opt.source_url is None:
-        log.error("-u/--source-url must be defined for -D/--dest-dir mode")
-        return False
-
-    compressed_sig = False
+    All on urllib2 objects, no return.
+    '''
 
     if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
         log.error("HTTP auth type must be one of 'digest' or 'basic'")
@@ -57,14 +56,13 @@ def dest_side(opt, args):
 
         urllib2.install_opener(auth_opener)
 
-    if opt.proxy_url:
-        log.debug("Configuring proxy")
-        raise Exception("Explicit proxy not yet implemented, use "
-                            "environment variables")
+
+def _configure_hashurl(opt):
 
     hashurl = None
     hashfile = opt.hash_file
     shortname = hashfile
+    compressed_sig = False
 
     if opt.remote_sig_compressed:
         hashfile += '.gz'
@@ -91,6 +89,24 @@ def dest_side(opt, args):
 
         hashurl = cano_url(opt.source_url, slash=True) + hashfile
         log.debug("Synthesised signature URL '%s'", hashurl)
+
+    return (hashurl, shortname, compressed_sig)
+
+
+def dest_side(opt, args):
+
+    if opt.source_url is None:
+        log.error("-u/--source-url must be defined for -D/--dest-dir mode")
+        return False
+
+    _configure_http_auth(opt)
+
+    if opt.proxy_url:
+        log.debug("Configuring proxy")
+        raise Exception("Explicit proxy not yet implemented, use "
+                            "environment variables")
+
+    (hashurl, shortname, compressed_sig) = _configure_hashurl(opt)
 
     # Fetch the signature file.
     if not opt.quiet:
@@ -129,117 +145,131 @@ def dest_side(opt, args):
     abs_lockfile = abs_hashfile + '.lock'
     log.debug("abs_hashfile '%s' abs_lockfile '%s'",
                 abs_hashfile, abs_lockfile)
-    existing_hl = None
 
     if not os.path.isdir(opt.dest_dir):
         os.makedirs(opt.dest_dir)
 
     with LockFileManager(abs_lockfile):
 
-        # Make a note of whether or not an old hashfile exists.
-        old_hashfile_exists = os.path.exists(abs_hashfile)
+        return _dest_impl(abs_hashfile, src_hashlist, shortname, opt)
 
-        if not opt.always_checksum and old_hashfile_exists:
-            if not opt.quiet:
-                print("Reading existing hashfile")
 
-            # Fetch the signature file.
-            hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                                    short_name=opt.hash_file,
-                                                    remote_flag=False,
-                                                    include_in_total=False)
-            dst_strfile = hashfile_contents.splitlines()
-            existing_hl = hashlist_from_stringlist(dst_strfile, opt,
-                                                    root=opt.dest_dir)
+def _dest_impl(abs_hashfile, src_hashlist, shortname, opt):
 
-        # Calculate the differences to the local filesystem.
-        #
-        # Since we've just done a scan, write the results to the disk - then,
-        # if something goes wrong, at least we've saved the scan results.
-        (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
-                                                src_hashlist, opt,
-                                                existing_hashlist=existing_hl,
-                                                opportunistic_write=True,
-                                                opwrite_path=abs_hashfile,
-                                                source_side=False)
+    existing_hl = None
 
-        if opt.verify_only:
-            # Give a report if we're verbose.
-            needed_is_real = False
+    # Make a note of whether or not an old hashfile exists.
+    old_hashfile_exists = os.path.exists(abs_hashfile)
 
-            if needed:
-                shown_header = False
+    if not opt.always_checksum and old_hashfile_exists:
+        if not opt.quiet:
+            print("Reading existing hashfile")
 
-                for fh in needed:
-                    if not fh.is_dir:
-                        needed_is_real = True
+        # Fetch the signature file.
+        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
+                                                short_name=shortname,
+                                                remote_flag=False,
+                                                include_in_total=False)
+        dst_strfile = hashfile_contents.splitlines()
+        existing_hl = hashlist_from_stringlist(dst_strfile, opt,
+                                                root=opt.dest_dir)
 
-                        if not opt.quiet:
-                            if not shown_header:
-                                print("Files needing transfer:")
-                                shown_header = True
+    # Calculate the differences to the local filesystem.
+    #
+    # Since we've just done a scan, write the results to the disk - then,
+    # if something goes wrong, at least we've saved the scan results.
+    (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
+                                            src_hashlist, opt,
+                                            existing_hashlist=existing_hl,
+                                            opportunistic_write=True,
+                                            opwrite_path=abs_hashfile,
+                                            source_side=False)
 
-                            print("+ %s" % fh.fpath, end='')
-                            if not fh.contents_differ and fh.metadata_differs:
-                                print(" (metadata change only)")
-                            else:
-                                print('')
+    if opt.verify_only:
+        return _verify_impl(needed, not_needed, opt)
+    else:
+        return _fetch_remote_impl(needed, not_needed, dst_hashlist, opt)
 
-            if not opt.no_delete and not_needed:
-                shown_header = False
 
-                for fh in not_needed:
+def _verify_impl(needed, not_needed, opt):
+    # Give a report if we're verbose.
+    needed_is_real = False
+
+    if needed:
+        shown_header = False
+
+        for fh in needed:
+            if not fh.is_dir:
+                needed_is_real = True
+
+                if not opt.quiet:
                     if not shown_header:
-                        print("Files needing deletion:")
+                        print("Files needing transfer:")
                         shown_header = True
 
-                    needed_is_real = True
-                    if not opt.quiet:
-                        print("- %s" % fh.fpath)
+                    print("+ %s" % fh.fpath, end='')
+                    if not fh.contents_differ and fh.metadata_differs:
+                        print(" (metadata change only)")
+                    else:
+                        print('')
 
-            if needed_is_real:
-                return False
-            else:
-                # True ('verified') means 'nothing to do'.
-                return True
+    if not opt.no_delete and not_needed:
+        shown_header = False
 
-        else:
-            fetch_added = fetch_needed(needed, opt.source_url, opt)
-            if fetch_added is not None:
-                delete_status = delete_not_needed(not_needed, opt.dest_dir,
-                                                    opt)
+        for fh in not_needed:
+            if not shown_header:
+                print("Files needing deletion:")
+                shown_header = True
 
-            if (fetch_added is None or not delete_status):
-                log.error("Sync failed")
-                return False
-
-            if fetch_added is not None:
-                log.debug("Adding new entries to destination hashlist")
-                dst_hashlist.extend(fetch_added)
-
-            if not opt.no_write_hashfile and dst_hashlist is not None:
-                if not sigfile_write(dst_hashlist, abs_hashfile, opt,
-                                            use_tmp=True, verb='Writing',
-                                            no_compress=True):
-                    log.error("Failed to write signature file '%s'",
-                                os.path.join(opt.source_dir, opt.hash_file))
-                    return False
-
+            needed_is_real = True
             if not opt.quiet:
-                if fetch_added:
-                    print("Files added:")
-                    for fh in fetch_added:
-                        print("+ %s" % fh.fpath)
+                print("- %s" % fh.fpath)
 
-                if not_needed:
-                    print("\nFiles removed:")
-                    for fh in not_needed:
-                        print("- %s" % fh.fpath)
+    if needed_is_real:
+        return False
+    else:
+        # True ('verified') means 'nothing to do'.
+        return True
 
-            if opt.verbose:
-                print("\nRaw %s:" % opt.stats.name())
-                for k, v in opt.stats.iteritems():
-                    print("  %s = %s" % (k, v))
-                print('')
 
-            return True
+def _fetch_remote_impl(needed, not_needed, dst_hashlist, opt):
+
+    fetch_added = fetch_needed(needed, opt.source_url, opt)
+    if fetch_added is not None:
+        delete_status = delete_not_needed(not_needed, opt.dest_dir,
+                                            opt)
+
+    if (fetch_added is None or not delete_status):
+        log.error("Sync failed")
+        return False
+
+    if fetch_added is not None:
+        log.debug("Adding new entries to destination hashlist")
+        dst_hashlist.extend(fetch_added)
+
+    if not opt.no_write_hashfile and dst_hashlist is not None:
+        if not sigfile_write(dst_hashlist, abs_hashfile, opt,
+                                    use_tmp=True, verb='Writing',
+                                    no_compress=True):
+            log.error("Failed to write signature file '%s'",
+                        os.path.join(opt.source_dir, opt.hash_file))
+            return False
+
+    if not opt.quiet:
+        if fetch_added:
+            print("Files added:")
+            for fh in fetch_added:
+                print("+ %s" % fh.fpath)
+
+        if not_needed:
+            print("\nFiles removed:")
+            for fh in not_needed:
+                print("- %s" % fh.fpath)
+
+    if opt.verbose:
+        print("\nRaw %s:" % opt.stats.name())
+        for k, v in opt.stats.iteritems():
+            print("  %s = %s" % (k, v))
+        print('')
+
+    return True
