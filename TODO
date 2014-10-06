@@ -3,6 +3,8 @@ TODO for hsync
 
 Bugs
 
+- delete_not_needed() dies too easily. Delete failure is non-critical.
+
 - Documentation
 
 - Reduce memory consumption

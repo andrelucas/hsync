@@ -1084,97 +1084,6 @@ def dest_side(opt, args):
         log.error("-u/--source-url must be defined for -D/--dest-dir mode")
         return False
 
-    compressed_sig = False
-
-    if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
-        log.error("HTTP auth type must be one of 'digest' or 'basic'")
-        return False
-
-    if opt.http_user:
-        log.debug("Configuring HTTP authentication")
-        if not opt.http_pass:
-            log.error("HTTP proxy password must be specified")
-
-        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        pwmgr.add_password(None, opt.source_url,
-                            opt.http_user, opt.http_pass)
-        auth_opener = None
-        if opt.http_auth_type == 'digest':
-            log.debug("Configuring digest authentication")
-            auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
-
-        else:
-            log.debug("Configuring basic authentication")
-            auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
-
-        urllib2.install_opener(auth_opener)
-
-    if opt.proxy_url:
-        log.debug("Configuring proxy")
-        raise Exception("Explicit proxy not yet implemented, use "
-                            "environment variables")
-
-    hashurl = None
-    hashfile = opt.hash_file
-    shortname = hashfile
-
-    if opt.remote_sig_compressed:
-        hashfile += '.gz'
-        compressed_sig = True
-
-    if opt.signature_url:
-        hashurl = _cano_url(opt.signature_url)
-        log.debug("Explicit signature URL '%s'", hashurl)
-
-        if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
-            log.debug("Assuming compression for signature URL '%s'", opt.signature_url)
-            compressed_sig = True
-            shortname += '.gz'
-
-        if opt.remote_sig_compressed:
-            log.debug("Force remote signature compression mode")
-            compressed_sig = True
-
-    else:
-        if opt.remote_sig_compressed:
-            compressed_sig = True
-            shortname += '.gz'
-
-        hashurl = _cano_url(opt.source_url, slash=True) + hashfile
-        log.debug("Synthesised signature URL '%s'", hashurl)
-
-    # Fetch the signature file.
-    if not opt.quiet:
-        print("Fetching remote hashfile")
-
-    hashfile_contents = fetch_contents(hashurl, opt,
-                                        short_name=shortname,
-                                        include_in_total=False)
-
-    if hashfile_contents is None:
-        # We're not coming back from this.
-        log.error("Failed to retrieve signature file from '%s", hashurl)
-        return False
-
-    if compressed_sig:
-        gziptmp = tempfile.NamedTemporaryFile()
-        with gziptmp:
-            gziptmp.file.write(hashfile_contents)
-            gziptmp.file.close()
-            src_strfile = []
-            for l in gzip.open(gziptmp.name):
-                src_strfile.append(l.rstrip())
-    else:
-        src_strfile = hashfile_contents.splitlines()
-
-    if not src_strfile[-1].startswith("FINAL:"):
-        raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears to be missing!" % hashurl)
-
-    src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
-
-    opt.source_url = _cano_url(opt.source_url, slash=True)
-    log.debug("Source url '%s", opt.source_url)
-
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     abs_lockfile = abs_hashfile + '.lock'
     log.debug("abs_hashfile '%s' abs_lockfile '%s'", abs_hashfile, abs_lockfile)
@@ -1184,6 +1093,97 @@ def dest_side(opt, args):
         os.makedirs(opt.dest_dir)
 
     with LockFileManager(abs_lockfile):
+
+        compressed_sig = False
+
+        if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
+            log.error("HTTP auth type must be one of 'digest' or 'basic'")
+            return False
+
+        if opt.http_user:
+            log.debug("Configuring HTTP authentication")
+            if not opt.http_pass:
+                log.error("HTTP proxy password must be specified")
+
+            pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+            pwmgr.add_password(None, opt.source_url,
+                                opt.http_user, opt.http_pass)
+            auth_opener = None
+            if opt.http_auth_type == 'digest':
+                log.debug("Configuring digest authentication")
+                auth_opener = urllib2.build_opener(urllib2.DigestAuthHandler(pwmgr))
+
+            else:
+                log.debug("Configuring basic authentication")
+                auth_opener = urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pwmgr))
+
+            urllib2.install_opener(auth_opener)
+
+        if opt.proxy_url:
+            log.debug("Configuring proxy")
+            raise Exception("Explicit proxy not yet implemented, use "
+                                "environment variables")
+
+        hashurl = None
+        hashfile = opt.hash_file
+        shortname = hashfile
+
+        if opt.remote_sig_compressed:
+            hashfile += '.gz'
+            compressed_sig = True
+
+        if opt.signature_url:
+            hashurl = _cano_url(opt.signature_url)
+            log.debug("Explicit signature URL '%s'", hashurl)
+
+            if opt.signature_url.endswith('.gz'):  # XXX might fail with funny URLs.
+                log.debug("Assuming compression for signature URL '%s'", opt.signature_url)
+                compressed_sig = True
+                shortname += '.gz'
+
+            if opt.remote_sig_compressed:
+                log.debug("Force remote signature compression mode")
+                compressed_sig = True
+
+        else:
+            if opt.remote_sig_compressed:
+                compressed_sig = True
+                shortname += '.gz'
+
+            hashurl = _cano_url(opt.source_url, slash=True) + hashfile
+            log.debug("Synthesised signature URL '%s'", hashurl)
+
+        # Fetch the signature file.
+        if not opt.quiet:
+            print("Fetching remote hashfile")
+
+        hashfile_contents = fetch_contents(hashurl, opt,
+                                            short_name=shortname,
+                                            include_in_total=False)
+
+        if hashfile_contents is None:
+            # We're not coming back from this.
+            log.error("Failed to retrieve signature file from '%s", hashurl)
+            return False
+
+        if compressed_sig:
+            gziptmp = tempfile.NamedTemporaryFile()
+            with gziptmp:
+                gziptmp.file.write(hashfile_contents)
+                gziptmp.file.close()
+                src_strfile = []
+                for l in gzip.open(gziptmp.name):
+                    src_strfile.append(l.rstrip())
+        else:
+            src_strfile = hashfile_contents.splitlines()
+
+        if not src_strfile[-1].startswith("FINAL:"):
+            raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears to be missing!" % hashurl)
+
+        src_hashlist = hashlist_from_stringlist(src_strfile, opt, root=opt.dest_dir)
+
+        opt.source_url = _cano_url(opt.source_url, slash=True)
+        log.debug("Source url '%s", opt.source_url)
 
         # Make a note of whether or not an old hashfile exists.
         old_hashfile_exists = os.path.exists(abs_hashfile)
