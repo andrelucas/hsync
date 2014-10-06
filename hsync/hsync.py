@@ -554,7 +554,7 @@ def fetch_needed(needed, source, opts):
                     fh.fpath, fh.dest_missing, fh.contents_differ)
 
                 if not opts.quiet and sys.stdout.isatty():
-                    print("F: %s" % fh.fpath, end='')
+                    print("F: %s\r" % fh.fpath, end='')
 
                 # Fetch_contents will display progress information itself.
                 contents = fetch_contents(source_url, opts, for_filehash=fh,
@@ -898,7 +898,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
         else:
             progress_spacer = ''
 
-        print('\rF: %s%s%s' % (fname, progress_spacer, pfx), end='')
+        print('F: %s%s%s' % (fname, progress_spacer, pfx), end='')
 
     outfile = ''
     progress = False
