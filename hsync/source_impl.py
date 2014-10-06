@@ -89,10 +89,8 @@ def _read_hashlist(abs_hashfile, opt):
 
 def source_generate(abs_hashfile, opt):
     '''
-    
     Generate a hash of the local filesystem, optionally using existing
     signatures to speed up the process.
-
     '''
 
     existing_hl = None
@@ -112,7 +110,8 @@ def source_generate(abs_hashfile, opt):
 
     if hashlist is not None:
 
-        write_success = sigfile_write(hashlist, abs_hashfile, opt, use_tmp=True)
+        write_success = sigfile_write(hashlist, abs_hashfile, opt,
+                                        use_tmp=True)
         if not write_success:
             log.error("Failed to write signature file '%s'",
                 os.path.join(opt.source_dir, opt.hash_file))
