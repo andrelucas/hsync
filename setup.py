@@ -13,6 +13,7 @@ setup(
         license = 'BSD',
         packages = [ 'hsync', ],
 
+        tests_require = [ 'coverage', 'mock', 'nose' ],
         requires = [ 'urlgrabber', ],
 
         entry_points={
