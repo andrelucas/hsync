@@ -3,8 +3,6 @@ TODO for hsync
 
 Bugs
 
-- delete_not_needed() dies too easily. Delete failure is non-critical.
-
 - Documentation
 
 - Reduce memory consumption
@@ -13,9 +11,11 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- Test coverage of hsync.py isn't good enough (nosetests --coverage --cover-html).
+- Test coverage of hsync.py isn't good enough.
 
 - Remove excluded dirs from the old .SIG file, as well as from the scan.
+
+- Lint pass.
 
 
 Features
