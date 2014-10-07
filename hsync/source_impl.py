@@ -22,8 +22,6 @@ log = logging.getLogger()
 ##
 
 
-
-
 def source_side(opt, args):
     '''
     Implement the source-side of hsync.
@@ -47,6 +45,43 @@ def source_side(opt, args):
     # Generate the new hashfile.
     with LockFileManager(abs_lockfile):
         return source_generate(abs_hashfile, opt)
+
+
+def source_generate(abs_hashfile, opt):
+    '''
+    Generate a hash of the local filesystem, optionally using existing
+    signatures to speed up the process.
+    '''
+
+    existing_hl = None
+
+    if not opt.always_checksum and os.path.exists(abs_hashfile):
+        if not opt.quiet:
+            print("Reading existing hashfile")
+
+        # Fetch the signature file.
+        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
+                                            short_name=opt.hash_file)
+        # Turn into a hashlist.
+        existing_hl = _read_hashlist(abs_hashfile, opt)
+
+    hashlist = hashlist_generate(opt.source_dir, opt,
+                                    existing_hashlist=existing_hl)
+
+    if hashlist is not None:
+
+        write_success = sigfile_write(hashlist, abs_hashfile, opt,
+                                        use_tmp=True)
+        if not write_success:
+            log.error("Failed to write signature file '%s'",
+                os.path.join(opt.source_dir, opt.hash_file))
+            return False
+
+        return True
+
+    else:
+        log.error("Send-side generate failed")
+        return False
 
 
 def _generate_hashfile_url(opt):
@@ -94,40 +129,3 @@ def _read_hashlist(abs_hashfile, opt):
         strfile = hashfile_contents.splitlines()
 
     existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
-
-
-def source_generate(abs_hashfile, opt):
-    '''
-    Generate a hash of the local filesystem, optionally using existing
-    signatures to speed up the process.
-    '''
-
-    existing_hl = None
-
-    if not opt.always_checksum and os.path.exists(abs_hashfile):
-        if not opt.quiet:
-            print("Reading existing hashfile")
-
-        # Fetch the signature file.
-        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                            short_name=opt.hash_file)
-        # Turn into a hashlist.
-        existing_hl = _read_hashlist(abs_hashfile, opt)
-
-    hashlist = hashlist_generate(opt.source_dir, opt,
-                                    existing_hashlist=existing_hl)
-
-    if hashlist is not None:
-
-        write_success = sigfile_write(hashlist, abs_hashfile, opt,
-                                        use_tmp=True)
-        if not write_success:
-            log.error("Failed to write signature file '%s'",
-                os.path.join(opt.source_dir, opt.hash_file))
-            return False
-
-        return True
-
-    else:
-        log.error("Send-side generate failed")
-        return False

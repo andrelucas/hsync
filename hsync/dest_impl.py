@@ -23,75 +23,6 @@ log = logging.getLogger()
 ## Dest-side.
 ##
 
-def _configure_http_auth(opt):
-
-    '''
-    Configure HTTP authentication.
-
-    All on urllib2 objects, no return.
-    '''
-
-    if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
-        log.error("HTTP auth type must be one of 'digest' or 'basic'")
-        return False
-
-    if opt.http_user:
-        log.debug("Configuring HTTP authentication")
-        if not opt.http_pass:
-            log.error("HTTP proxy password must be specified")
-
-        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        pwmgr.add_password(None, opt.source_url,
-                            opt.http_user, opt.http_pass)
-        auth_opener = None
-        if opt.http_auth_type == 'digest':
-            log.debug("Configuring digest authentication")
-            auth_opener = urllib2.build_opener(
-                            urllib2.DigestAuthHandler(pwmgr))
-
-        else:
-            log.debug("Configuring basic authentication")
-            auth_opener = urllib2.build_opener(
-                            urllib2.HTTPBasicAuthHandler(pwmgr))
-
-        urllib2.install_opener(auth_opener)
-
-
-def _configure_hashurl(opt):
-
-    hashurl = None
-    hashfile = opt.hash_file
-    shortname = hashfile
-    compressed_sig = False
-
-    if opt.remote_sig_compressed:
-        hashfile += '.gz'
-        compressed_sig = True
-
-    if opt.signature_url:
-        hashurl = cano_url(opt.signature_url)
-        log.debug("Explicit signature URL '%s'", hashurl)
-
-        if opt.signature_url.endswith('.gz'):
-            log.debug("Assuming compression for signature URL '%s'",
-                        opt.signature_url)
-            compressed_sig = True
-            shortname += '.gz'
-
-        if opt.remote_sig_compressed:
-            log.debug("Force remote signature compression mode")
-            compressed_sig = True
-
-    else:
-        if opt.remote_sig_compressed:
-            compressed_sig = True
-            shortname += '.gz'
-
-        hashurl = cano_url(opt.source_url, slash=True) + hashfile
-        log.debug("Synthesised signature URL '%s'", hashurl)
-
-    return (hashurl, shortname, compressed_sig)
-
 
 def dest_side(opt, args):
 
@@ -273,3 +204,75 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, opt):
         print('')
 
     return True
+
+
+
+def _configure_http_auth(opt):
+
+    '''
+    Configure HTTP authentication.
+
+    All on urllib2 objects, no return.
+    '''
+
+    if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
+        log.error("HTTP auth type must be one of 'digest' or 'basic'")
+        return False
+
+    if opt.http_user:
+        log.debug("Configuring HTTP authentication")
+        if not opt.http_pass:
+            log.error("HTTP proxy password must be specified")
+
+        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        pwmgr.add_password(None, opt.source_url,
+                            opt.http_user, opt.http_pass)
+        auth_opener = None
+        if opt.http_auth_type == 'digest':
+            log.debug("Configuring digest authentication")
+            auth_opener = urllib2.build_opener(
+                            urllib2.DigestAuthHandler(pwmgr))
+
+        else:
+            log.debug("Configuring basic authentication")
+            auth_opener = urllib2.build_opener(
+                            urllib2.HTTPBasicAuthHandler(pwmgr))
+
+        urllib2.install_opener(auth_opener)
+
+
+def _configure_hashurl(opt):
+
+    hashurl = None
+    hashfile = opt.hash_file
+    shortname = hashfile
+    compressed_sig = False
+
+    if opt.remote_sig_compressed:
+        hashfile += '.gz'
+        compressed_sig = True
+
+    if opt.signature_url:
+        hashurl = cano_url(opt.signature_url)
+        log.debug("Explicit signature URL '%s'", hashurl)
+
+        if opt.signature_url.endswith('.gz'):
+            log.debug("Assuming compression for signature URL '%s'",
+                        opt.signature_url)
+            compressed_sig = True
+            shortname += '.gz'
+
+        if opt.remote_sig_compressed:
+            log.debug("Force remote signature compression mode")
+            compressed_sig = True
+
+    else:
+        if opt.remote_sig_compressed:
+            compressed_sig = True
+            shortname += '.gz'
+
+        hashurl = cano_url(opt.source_url, slash=True) + hashfile
+        log.debug("Synthesised signature URL '%s'", hashurl)
+
+    return (hashurl, shortname, compressed_sig)
+
