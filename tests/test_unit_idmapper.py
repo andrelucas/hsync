@@ -50,6 +50,18 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 			self.my_gid, "Bogus group should not throw KeyError")
 
 
+	def test_good_defaults(self):
+		'''Sensible defaults are accepted and get obvious results'''
+		self.m.set_default_uid(self.my_uid)
+		self.assertEquals(self.m.default_name, self.my_name)
+		self.m.set_default_name(self.my_name)
+		self.assertEquals(self.m.default_uid, self.my_uid)
+		self.m.set_default_gid(self.my_gid)
+		self.assertEquals(self.m.default_group, self.my_group)
+		self.m.set_default_group(self.my_group)
+		self.assertEquals(self.m.default_gid, self.my_gid)
+
+
 	def test_bad_defaults_raise(self):
 		'''Bogus idmapper set_default_*()s raise exceptions'''
 		with self.assertRaises(KeyError):

@@ -73,7 +73,7 @@ class UidGidMapper(object):
         #log.debug("uid %d name %s", uid, self.uid_to_name[uid])
         return self.uid_to_name[uid]
 
-    
+
     def get_group_for_gid(self, gid):
         gid=int(gid)
         if not gid in self.gid_to_group:
