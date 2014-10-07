@@ -14,10 +14,11 @@ from idmapper import UidGidMapper
 
 log = logging.getLogger()
 
-def fetch_contents(fpath, opts, root='', no_trim=False,
-                    for_filehash=None, short_name=None,
-                    file_count_number=None, file_count_total=None,
-                    remote_flag=True, include_in_total=True):
+
+def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
+                    short_name=None, file_count_number=None,
+                    file_count_total=None, remote_flag=True,
+                    include_in_total=True):
     '''
     Wrap a fetch, which may be from a file or URL depending on the options.
 
@@ -126,18 +127,20 @@ def fetch_contents(fpath, opts, root='', no_trim=False,
 
     while more_to_read:
         # if log.isEnabledFor(logging.DEBUG):
-        #     log.debug("Read: %d bytes (%d/%d)", block_size, bytes_read, size)
+        #     log.debug("Read: %d bytes (%d/%d)",
+        #               block_size,bytes_read, size)
         try:
             new_bytes = url.read(block_size)
+            nblen = len(new_bytes)
             if not new_bytes:
                 more_to_read = False
             else:
-                bytes_read += len(new_bytes)
+                bytes_read += nblen
                 if remote_flag:
                     if include_in_total:
-                        opts.stats.bytes_transferred += len(new_bytes)
+                        opts.stats.bytes_transferred += nblen
                     else:
-                        opts.stats.metadata_bytes_transferred += len(new_bytes)
+                        opts.stats.metadata_bytes_transferred += nblen
 
                 outfile += new_bytes
                 if opts.progress:
@@ -261,11 +264,12 @@ def fetch_needed(needed, source, opts):
                         raise ContentsFetchFailedException(
                             "Failed to fetch '%s'" % source_url)
                     else:
-                        log.debug("Failed to fetch '%s', continuing", fh.fpath)
+                        log.debug("Failed to fetch '%s', continuing",
+                                    fh.fpath)
 
                 else:
 
-                    changed_contents = True     # If we fetched it, we changed it.
+                    changed_contents = True # If we fetched it, we changed it.
 
                     chk = hashlib.sha256()
                     log.debug("Hashing contents")
@@ -289,36 +293,45 @@ def fetch_needed(needed, source, opts):
                     if os.path.exists(tgt_file):
                         if os.path.islink(tgt_file):
                             raise ParanoiaError(
-                                "Not overwriting existing symlink '%s' with file", tgt_file)
+                                "Not overwriting existing symlink '%s' with "
+                                "file", tgt_file)
                         if os.path.isdir(tgt_file):
                             raise DirWhereFileExpectedError(
-                                "Directory found where file expected at '%s'", tgt_file)
+                                "Directory found where file expected at '%s'",
+                                tgt_file)
 
                     # Dealing with file descriptors, use os.f*() variants.
-                    tgt = os.open(tgt_file_rnd, os.O_CREAT | os.O_EXCL | os.O_WRONLY, fh.mode)
+                    tgt = os.open(tgt_file_rnd, 
+                                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                                    fh.mode)
                     if tgt == -1:
-                        raise OSOperationFailedError("Failed to open '%s'", tgt_file_rnd)
+                        raise OSOperationFailedError("Failed to open '%s'",
+                                tgt_file_rnd)
 
                     expect_uid = fh.uid
                     expect_gid = fh.gid
 
                     filestat = os.stat(tgt_file_rnd)
-                    if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                    if filestat.st_uid != expect_uid or \
+                            filestat.st_gid != expect_gid:
                         changed_uidgid = True
                         log.debug("Changing file %s ownership to %s/%s",
                                     tgt_file_rnd, fh.user, fh.group)
                         if os.fchown(tgt, expect_uid, expect_gid) == -1:
-                            log.warn("Failed to fchown '%s' to user %s group %s",
-                                    tgt_file_rnd, fh.user, fh.group)
+                            log.warn("Failed to fchown '%s' to user %s "
+                                        "group %s",
+                                        tgt_file_rnd, fh.user, fh.group)
 
-                    changed_mode = False # We didn't /change/ it, we created it.
+                    changed_mode = False # We didn't change it, we created it.
 
                     os.write(tgt, contents)
                     os.close(tgt)
-                    log.debug("Moving into place: '%s' -> '%s'", tgt_file_rnd, tgt_file)
+                    log.debug("Moving into place: '%s' -> '%s'",
+                                tgt_file_rnd, tgt_file)
                     if os.rename(tgt_file_rnd, tgt_file) == -1:
-                        raise OSOperationFailedError("Failed to rename '%s' to '%s'",
-                            tgt_file_rnd, tgt_file)
+                        raise OSOperationFailedError(
+                                "Failed to rename '%s' to '%s'",
+                                tgt_file_rnd, tgt_file)
 
                     changed_mtime = True
                     os.utime(tgt_file, (fh.mtime, fh.mtime))
@@ -339,12 +352,13 @@ def fetch_needed(needed, source, opts):
                 if not opts.quiet:
                     print("F: %s" % (fh.fpath), end='')
 
-                if filestat.st_uid != expect_uid or filestat.st_gid != expect_gid:
+                if filestat.st_uid != expect_uid or \
+                        filestat.st_gid != expect_gid:
                     changed_uidgid = True
                     if not opts.quiet:
                         print(" (user/group: %s/%s -> %s/%s)" % (
-                                                    filestat.st_uid, filestat.st_gid,
-                                                    expect_uid, expect_gid), end='')
+                                            filestat.st_uid, filestat.st_gid,
+                                            expect_uid, expect_gid), end='')
                     log.debug("Changing file %s ownership to %s/%s",
                                 tgt_file, fh.user, fh.group)
                     if os.chown(tgt_file, expect_uid, expect_gid) == -1:
@@ -354,16 +368,19 @@ def fetch_needed(needed, source, opts):
                 if filestat.st_mode != fh.mode:
                     changed_mode = True
                     if not opts.quiet:
-                        print(" (mode %06o -> %06o)" % (filestat.st_mode, fh.mode), end='')
+                        print(" (mode %06o -> %06o)" % 
+                                (filestat.st_mode, fh.mode), end='')
 
                     log.debug("'%s': Setting mode: %06o", fh.fpath, fh.mode)
                     if os.chmod(tgt_file, fh.mode) == -1:
-                        log.warn("Failed to fchmod '%s' to %06o", fh.fpath, fh.mode)
+                        log.warn("Failed to fchmod '%s' to %06o",
+                                    fh.fpath, fh.mode)
 
                 if filestat.st_mtime != fh.mtime:
                     changed_mtime = True
                     if not opts.quiet:
-                        print(" (mtime %d -> %d)" % (filestat.st_mtime, fh.mtime), end='')
+                        print(" (mtime %d -> %d)" % 
+                                (filestat.st_mtime, fh.mtime), end='')
                     os.utime(tgt_file, (fh.mtime, fh.mtime))
 
                 opts.stats.file_metadata_differed += 1
@@ -445,7 +462,7 @@ def fetch_needed(needed, source, opts):
                 log.debug("Path '%s' exists in the filesystem", tgt_dir)
                 if not os.path.isdir(tgt_dir):
                     raise NonDirFoundAtDirLocationError(
-                        "Non-directory found where we want a directory ('%s')",
+                        "Non-directory found where directory expected ('%s')",
                         tgt_dir)
             else:
                 log.debug("Creating directory '%s'", tgt_dir)
@@ -467,8 +484,9 @@ def fetch_needed(needed, source, opts):
                 log.debug("Changing dir %s ownership to %s/%s",
                             tgt_dir, fh.user, fh.group)
                 if not opts.quiet:
-                    print("D: %s (user/group: %s/%s -> %s/%s)" % (fh.fpath,
-                            dstat.st_uid, dstat.st_gid, expect_uid, expect_gid))
+                    print("D: %s (user/group: %s/%s -> %s/%s)" % 
+                            (fh.fpath, dstat.st_uid, dstat.st_gid, expect_uid,
+                             expect_gid))
                 os.chown(tgt_dir, expect_uid, expect_gid)
 
             if dstat.st_mode != fh.mode:
