@@ -177,14 +177,14 @@ def fetch_needed(needed, source, opts):
 
     This is a bit fiddly, as it tries hard to get the modes right.
 
-    Returns a list of FileHash objects we /added/ as a result of this run, or
-    None on failure.
+    Returns a tuple (fetch_added, error_count), a list of FileHash objects we
+    /added/ as a result of this run, and the number of errors in the run.
     '''
 
     r = SystemRandom()
     mapper = UidGidMapper()
     fetch_added = []
-    errorCount = 0
+    error_count = 0
 
     if not source.endswith('/'):
         source += "/"
@@ -229,21 +229,21 @@ def fetch_needed(needed, source, opts):
 
             except FetchException as e:
                 warn("Fetch file %s failed: %s", source_url, e)
-                errorCount += 1
+                error_count += 1
 
         elif fh.is_link:
             try:
                 _link_fetch(fh, changed, opts)
             except FetchException as e:
                 warn("Update link %s failed: %s", fh.fpath, e)
-                errorCount += 1
+                error_count += 1
 
         elif fh.is_dir:
             try:
                 _dir_fetch(fh, changed, opts)
             except FetchException as e:
                 warn("Update dir %s failed: %s", fh.fpath, e)
-                errorCount += 1
+                error_count += 1
 
         # Update the client-side HSYNC.SIG data.
         log.debug("Updating dest hash for '%s'", fh.fpath)
@@ -251,15 +251,15 @@ def fetch_needed(needed, source, opts):
 
     log.debug("fetch_needed(): done")
 
-    if errorCount == 0:
+    if error_count == 0:
         if not opts.quiet:
             print("Fetch completed")
         log.debug("Fetch completed successfully")
-        return fetch_added
 
     else:
-        log.warn("Fetch failed with %d errors", errorCount)
-        return None
+        log.warn("Fetch completed with %d errors", error_count)
+
+    return (fetch_added, error_count)
 
 
 def delete_not_needed(not_needed, target, opts):
@@ -267,7 +267,7 @@ def delete_not_needed(not_needed, target, opts):
     Remove files from the destination that are not present on the source.
     '''
     dirs_to_delete = []
-    errorCount = 0
+    error_count = 0
 
     for fh in not_needed:
         if fh.is_dir:
@@ -279,7 +279,11 @@ def delete_not_needed(not_needed, target, opts):
             log.debug("delete_not_needed: %s", fullpath)
             if not opts.quiet:
                 print("Remove file: %s" % fh.fpath)
-            os.remove(fullpath)
+            try:
+                os.remove(fullpath)
+            except OSError as e:
+                warn("Failed to delete file %s: %s", fullpath, e)
+                error_count += 1
 
     if dirs_to_delete:
         # Sort the delete list by filename, then reverse so it's depth-
@@ -290,10 +294,14 @@ def delete_not_needed(not_needed, target, opts):
             if not opts.quiet:
                 print("Remove dir: %s" % d.fpath)
             log.debug("Deleting directory '%s'", fullpath)
-            os.rmdir(fullpath)
+            try:
+                os.rmdir(fullpath)
+            except OSError as e:
+                warn("Failed to delete dir %s: %s", fullpath, e)
+                error_count += 1
 
-    if errorCount:
-        log.warn("Delete failed with %d errors", errorCount)
+    if error_count:
+        log.warn("Delete failed with %d errors", error_count)
         return False
 
     return True

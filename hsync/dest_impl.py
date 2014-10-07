@@ -169,16 +169,18 @@ def _verify_impl(needed, not_needed, opt):
 
 def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
 
-    fetch_added = fetch_needed(needed, opt.source_url, opt)
-    if fetch_added is not None:
-        delete_status = delete_not_needed(not_needed, opt.dest_dir,
-                                            opt)
+    # fetch_needed() does almost all the work.
+    (fetch_added, fetch_err_count) = fetch_needed(needed, opt.source_url, opt)
 
-    if (fetch_added is None or not delete_status):
+    # Don't delete things if we had transfer problems. It's safer.
+    if fetch_err_count == 0:
+        delete_status = delete_not_needed(not_needed, opt.dest_dir, opt)
+
+    if (fetch_err_count > 0 or not delete_status):
         log.error("Sync failed")
         return False
 
-    if fetch_added is not None:
+    if len(fetch_added) > 0:
         log.debug("Adding %d new entries to destination hashlist",
                     len(fetch_added))
         dst_hashlist.extend(fetch_added)
