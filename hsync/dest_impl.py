@@ -178,7 +178,8 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, opt):
         return False
 
     if fetch_added is not None:
-        log.debug("Adding new entries to destination hashlist")
+        log.debug("Adding %d new entries to destination hashlist",
+                    len(fetch_added))
         dst_hashlist.extend(fetch_added)
 
     if not opt.no_write_hashfile and dst_hashlist is not None:

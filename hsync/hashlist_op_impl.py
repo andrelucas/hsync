@@ -338,7 +338,6 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     of filepaths that need to be fetched, and notneeded is a list of filepaths
     that are not present on the target, so may be removed. dst_hashlist is
     a list of FileHash objects for the destination path.
-
     '''
 
     src_fdict = hashlist_to_dict(src_hashlist)
