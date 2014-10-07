@@ -14,6 +14,7 @@ from exceptions import *
 
 class NotHashableException(Exception): pass
 class UnsupportedFileTypeException(Exception): pass
+
 class LinkOperationOnNonLinkError(Exception): pass
 class PathMustBeAbsoluteError(Exception): pass
 class SymlinkPointsOutsideTreeError(Exception): pass
@@ -64,6 +65,9 @@ class FileHash(object):
         self.fullpath = fpath
         self.defer_read = defer_read
         self.has_read_contents = False
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("fullpath '%s'", self.fullpath)
 
         if trim:
             self.fpath = self.fullpath[len(root):]
@@ -129,7 +133,7 @@ class FileHash(object):
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
                 "%s: File type '%s' is unsupported" %
-                self._type_to_string(ftype))
+                (self.fullpath, self._type_to_string(mode)))
 
         self.hash_safe = True
         return self
@@ -151,8 +155,9 @@ class FileHash(object):
         to avoid reading the file again.
         '''
         log.debug("'%s': skip check", self.fpath)
-        assert self.fpath == other.fpath, "fpaths really should agree"
-
+        if self.fpath != other.fpath:
+            log.debug("names differ, fail skip check")
+            return False
         if self.size != other.size:
             log.debug("sizes differ, fail skip check")
             return False
@@ -253,7 +258,7 @@ class FileHash(object):
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
                 "%s: File type '%s' is unsupported" %
-                self._type_to_string(mode))
+                (self.fullpath, self._type_to_string(mode)))
 
         self.hash_safe = True
         return self
@@ -332,6 +337,7 @@ class FileHash(object):
 
 
     def compare(self, other,
+                ignore_name=False,
                 ignore_uid_gid=False,
                 ignore_mode=False,
                 trust_mtime=True):
@@ -344,6 +350,7 @@ class FileHash(object):
         # file.
         self.dest_missing = False
 
+        differ_name = False
         differ_metadata = False
         differ_contents = False
         differ_mtime = False
@@ -354,6 +361,11 @@ class FileHash(object):
                 "ignore_mode %s trust_mtime %s",
                 repr(self), repr(other),
                 ignore_uid_gid, ignore_mode, trust_mtime)
+
+        if not ignore_name:
+            if self.fpath != other.fpath:
+                log.debug("Object names differ")
+                differ_name = True
 
         if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
@@ -396,14 +408,16 @@ class FileHash(object):
                 else:
                     log.debug("Hash verified")
 
-        log.debug("'%s': Identity check: contents %s metadata %s mtime %s",
-            self.fpath, differ_contents, differ_metadata, differ_mtime)
+        log.debug("'%s': Identity check: name %s contents %s metadata %s "
+                    "mtime %s", self.fpath, differ_name, differ_contents,
+                                differ_metadata, differ_mtime)
 
         self.contents_differ = differ_contents
         self.metadata_differs = differ_metadata
         self.mtime_differs = differ_mtime
 
-        differs = differ_contents or differ_metadata or differ_mtime
+        differs = differ_contents or differ_metadata or \
+                    differ_mtime or differ_name
         return not differs
 
 
