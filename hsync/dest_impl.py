@@ -122,7 +122,8 @@ def _dest_impl(abs_hashfile, src_hashlist, shortname, opt):
     if opt.verify_only:
         return _verify_impl(needed, not_needed, opt)
     else:
-        return _fetch_remote_impl(needed, not_needed, dst_hashlist, opt)
+        return _fetch_remote_impl(needed, not_needed, 
+                                    dst_hashlist, abs_hashfile, opt)
 
 
 def _verify_impl(needed, not_needed, opt):
@@ -166,7 +167,7 @@ def _verify_impl(needed, not_needed, opt):
         return True
 
 
-def _fetch_remote_impl(needed, not_needed, dst_hashlist, opt):
+def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
 
     fetch_added = fetch_needed(needed, opt.source_url, opt)
     if fetch_added is not None:
