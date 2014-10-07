@@ -134,7 +134,9 @@ class FileHash(object):
         self.hash_safe = True
         return self
 
+
     def read_file_contents(self):
+
         if not self.is_file:
             raise
 
@@ -150,15 +152,7 @@ class FileHash(object):
         '''
         log.debug("'%s': skip check", self.fpath)
         assert self.fpath == other.fpath, "fpaths really should agree"
-        # if self.uid != other.uid:
-        #     log.debug("uids differ, fail skip check")
-        #     return False
-        # if self.gid != other.gid:
-        #     log.debug("gids differ, fail skip check")
-        #     return False
-        # if self.mode != other.mode:
-        #     log.debug("modes differ, fail skip check")
-        #     return False
+
         if self.size != other.size:
             log.debug("sizes differ, fail skip check")
             return False
@@ -464,24 +458,18 @@ class FileHash(object):
         topdir = os.path.normpath(srcdir)
         if not topdir.endswith(os.sep):
             topdir += os.sep
-        #log.debug("XXX topdir '%s", topdir)
 
         tpath = self.link_target
         norm_tpath = os.path.normpath(tpath)
-        # log.debug("XXX tpath '%s' norm_tpath '%s'", tpath, norm_tpath)
 
         spath_full = os.path.join(topdir, self.fpath)
         norm_spath_full = os.path.normpath(spath_full)
-        # log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full,
-        # norm_spath_full)
 
         norm_lpath_full = os.path.dirname(norm_spath_full)
-        # log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
         # This is the location of the symlink (dirname fpath) plus the link
         # target.
         tpath_full = os.path.join(topdir, norm_lpath_full, self.link_target)
         norm_tpath_full = os.path.normpath(tpath_full)
-        # log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full,
         # norm_tpath_full)
 
         if norm_tpath_full.startswith(topdir):

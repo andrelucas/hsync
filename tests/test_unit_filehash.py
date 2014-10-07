@@ -51,7 +51,7 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
 
 		linkstr = self.linkbase + '%s/%s>>> %s' % (ldir, lfile, tgt)
 		fh = FileHash.init_from_string(linkstr, trim=True, root=self.tmp)
-		
+
 		self.assertIsInstance(fh, FileHash, "Can create link FileHash")
 		norm_tpath = fh.source_symlink_make_relative(self.tmp,
 												absolute_is_error=absfail)
