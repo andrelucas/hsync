@@ -27,7 +27,6 @@ from filehash import *
 from hashlist_op_impl import hashlist_generate
 from idmapper import *
 from lockfile import LockFileManager
-from numformat import IECUnitConverter as IEC
 from source_impl import source_side
 from stats import StatsCollector
 

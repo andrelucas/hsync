@@ -11,6 +11,7 @@ import urllib2
 import urlparse
 
 from idmapper import UidGidMapper
+from numformat import IECUnitConverter
 from stats import StatsCollector
 
 log = logging.getLogger()
@@ -99,7 +100,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
 
     if opts.progress and size_is_known:
         progress = True
-        sizestr = IEC.bytes_to_unit(size)
+        sizestr = IECUnitConverter.bytes_to_unit(size)
 
     bytes_read = 0
     more_to_read = True
@@ -113,13 +114,13 @@ def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
                 pct = 100.0 * bytes_read / size
 
             print ("\r\t%s (file progress %s/%s [%.0f%%])" % (pfx,
-                                IEC.bytes_to_unit(bytes_read),
+                                IECUnitConverter.bytes_to_unit(bytes_read),
                                 sizestr,
                                 pct),
                     end='')
         else:
             print("\r%s (download %s/unknown)" % (pfx,
-                                IEC.bytes_to_unit(bytes_read)),
+                                IECUnitConverter.bytes_to_unit(bytes_read)),
                     end='')
 
 

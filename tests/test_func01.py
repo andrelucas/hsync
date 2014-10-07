@@ -303,7 +303,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 		tarball = 'zlib-1.2.8.tar.gz'
 		tardir = 'zlib-1.2.8'
 		subprocess.check_call(("tar xzf %s" % tarball).split())
-		self.rundiff(tardir, None, web=True)
+		self.rundiff(tardir, None, dst_optlist=['-P'], web=True)
 		shutil.rmtree(tardir)
 
 
