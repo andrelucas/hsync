@@ -63,6 +63,9 @@ def dest_side(opt, args):
     else:
         src_strfile = hashfile_contents.splitlines()
 
+    # Release hashfile contents from memory.
+    hashfile_contents = None
+
     if not src_strfile[-1].startswith("FINAL:"):
         raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears "
                                         "to be missing!" % hashurl)
