@@ -14,6 +14,7 @@ from exceptions import *
 
 class NotHashableException(Exception): pass
 class UnsupportedFileTypeException(Exception): pass
+
 class LinkOperationOnNonLinkError(Exception): pass
 class PathMustBeAbsoluteError(Exception): pass
 class SymlinkPointsOutsideTreeError(Exception): pass
@@ -64,6 +65,9 @@ class FileHash(object):
         self.fullpath = fpath
         self.defer_read = defer_read
         self.has_read_contents = False
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("fullpath '%s'", self.fullpath)
 
         if trim:
             self.fpath = self.fullpath[len(root):]
@@ -129,12 +133,14 @@ class FileHash(object):
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
                 "%s: File type '%s' is unsupported" %
-                self._type_to_string(ftype))
+                (self.fullpath, self._type_to_string(mode)))
 
         self.hash_safe = True
         return self
 
+
     def read_file_contents(self):
+
         if not self.is_file:
             raise
 
@@ -149,16 +155,9 @@ class FileHash(object):
         to avoid reading the file again.
         '''
         log.debug("'%s': skip check", self.fpath)
-        assert self.fpath == other.fpath, "fpaths really should agree"
-        # if self.uid != other.uid:
-        #     log.debug("uids differ, fail skip check")
-        #     return False
-        # if self.gid != other.gid:
-        #     log.debug("gids differ, fail skip check")
-        #     return False
-        # if self.mode != other.mode:
-        #     log.debug("modes differ, fail skip check")
-        #     return False
+        if self.fpath != other.fpath:
+            log.debug("names differ, fail skip check")
+            return False
         if self.size != other.size:
             log.debug("sizes differ, fail skip check")
             return False
@@ -259,7 +258,7 @@ class FileHash(object):
             self.hashstr = self.blankhash[:]
             raise UnsupportedFileTypeException(
                 "%s: File type '%s' is unsupported" %
-                self._type_to_string(mode))
+                (self.fullpath, self._type_to_string(mode)))
 
         self.hash_safe = True
         return self
@@ -338,6 +337,7 @@ class FileHash(object):
 
 
     def compare(self, other,
+                ignore_name=False,
                 ignore_uid_gid=False,
                 ignore_mode=False,
                 trust_mtime=True):
@@ -350,6 +350,7 @@ class FileHash(object):
         # file.
         self.dest_missing = False
 
+        differ_name = False
         differ_metadata = False
         differ_contents = False
         differ_mtime = False
@@ -360,6 +361,11 @@ class FileHash(object):
                 "ignore_mode %s trust_mtime %s",
                 repr(self), repr(other),
                 ignore_uid_gid, ignore_mode, trust_mtime)
+
+        if not ignore_name:
+            if self.fpath != other.fpath:
+                log.debug("Object names differ")
+                differ_name = True
 
         if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
@@ -402,14 +408,16 @@ class FileHash(object):
                 else:
                     log.debug("Hash verified")
 
-        log.debug("'%s': Identity check: contents %s metadata %s mtime %s",
-            self.fpath, differ_contents, differ_metadata, differ_mtime)
+        log.debug("'%s': Identity check: name %s contents %s metadata %s "
+                    "mtime %s", self.fpath, differ_name, differ_contents,
+                                differ_metadata, differ_mtime)
 
         self.contents_differ = differ_contents
         self.metadata_differs = differ_metadata
         self.mtime_differs = differ_mtime
 
-        differs = differ_contents or differ_metadata or differ_mtime
+        differs = differ_contents or differ_metadata or \
+                    differ_mtime or differ_name
         return not differs
 
 
@@ -464,24 +472,18 @@ class FileHash(object):
         topdir = os.path.normpath(srcdir)
         if not topdir.endswith(os.sep):
             topdir += os.sep
-        #log.debug("XXX topdir '%s", topdir)
 
         tpath = self.link_target
         norm_tpath = os.path.normpath(tpath)
-        # log.debug("XXX tpath '%s' norm_tpath '%s'", tpath, norm_tpath)
 
         spath_full = os.path.join(topdir, self.fpath)
         norm_spath_full = os.path.normpath(spath_full)
-        # log.debug("XXX spath_full '%s' norm_spath_full '%s'", spath_full,
-        # norm_spath_full)
 
         norm_lpath_full = os.path.dirname(norm_spath_full)
-        # log.debug("XXX norm_lpath_full '%s'", norm_lpath_full)
         # This is the location of the symlink (dirname fpath) plus the link
         # target.
         tpath_full = os.path.join(topdir, norm_lpath_full, self.link_target)
         norm_tpath_full = os.path.normpath(tpath_full)
-        # log.debug("XXX tpath_full '%s' norm_tpath_full '%s'", tpath_full,
         # norm_tpath_full)
 
         if norm_tpath_full.startswith(topdir):

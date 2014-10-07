@@ -48,3 +48,12 @@ class StatsCollectorUnitTestCase(unittest.TestCase):
 
 		test = { 'a': 1, 'b': 2, 'c': 3 }
 		self.assertEquals(copy, test)
+
+
+	def test_check_str(self):
+		'''str() works'''
+		s = StatsCollector.init('statstest', ['a', 'b'])
+		s.a = 1
+		s.b = 2
+		self.assertEquals(str(s), 'statstest: a=1, b=2',
+							"str() is as expected")

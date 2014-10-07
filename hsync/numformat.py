@@ -43,7 +43,7 @@ class ByteUnitConverter(object):
 				return sact
 			elif bytes < threshold * sact.upperbound:
 				return sact
-		assert False, "Shouldn't have got here"
+
 
 	@classmethod
 	def bytes_to_unit(cls, bytes):
@@ -51,17 +51,11 @@ class ByteUnitConverter(object):
 		fmt = sact.format
 		return fmt % (1.0*bytes/sact.divisor) + sact.unit
 
+
 	@classmethod
 	def unit_for_bytes(cls, bytes):
 		sact = cls.select_sact(bytes)
 		return sact.unit
-
-
-	@classmethod
-	def scale_to_unit(cls, bytes):
-		sact = cls.select_sact(bytes)
-		return 1.0*bytes/sact.divisor
-
 
 
 class IECUnitConverter(ByteUnitConverter):

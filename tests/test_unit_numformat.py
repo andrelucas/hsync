@@ -8,16 +8,56 @@ class NumFormatTestCase(unittest.TestCase):
 
 	def test_iec_simple(self):
 		'''Whole-number IEC units are exactly correct'''
-		self.assertEquals(IECUnitConverter.bytes_to_unit(1024).lstrip(), '1.0KiB')
-		self.assertEquals(IECUnitConverter.bytes_to_unit(1024*1024).lstrip(), '1.00MiB')
-		self.assertEquals(IECUnitConverter.bytes_to_unit(1024*1024*1024).lstrip(), '1.000GiB')
+		self.assertEquals(
+			IECUnitConverter.bytes_to_unit(1024).lstrip(),
+			'1.0KiB')
+		self.assertEquals(
+			IECUnitConverter.bytes_to_unit(1024*1024).lstrip(),
+			'1.00MiB')
+		self.assertEquals(
+			IECUnitConverter.bytes_to_unit(1024**3).lstrip(),
+			'1.000GiB')
+		self.assertEquals(
+			IECUnitConverter.bytes_to_unit(1024**4).lstrip(),
+			'1.0000TiB')
+
+
+	def test_iec_overlimit(self):
+		'''Exceeding the largest IEC unit is ok'''
+		self.assertEquals(
+			IECUnitConverter.bytes_to_unit(1024**5).lstrip(),
+			'1024.0000TiB')
+
+
+	def test_unit_fetch(self):
+		'''Can look up the unit for various byte values'''
+		self.assertEquals(IECUnitConverter.unit_for_bytes(1024**0), 'B')
+		self.assertEquals(SIUnitConverter.unit_for_bytes(1000**0), 'B')
+		self.assertEquals(IECUnitConverter.unit_for_bytes(1024**1), 'KiB')
+		self.assertEquals(SIUnitConverter.unit_for_bytes(1000**1), 'kB')
 
 
 	def test_si_simple(self):
 		'''Whole-number SI units are exactly correct'''
-		self.assertEquals(SIUnitConverter.bytes_to_unit(1000).lstrip(), '1.0kB')
-		self.assertEquals(SIUnitConverter.bytes_to_unit(1000*1000).lstrip(), '1.00MB')
-		self.assertEquals(SIUnitConverter.bytes_to_unit(1000*1000*1000).lstrip(), '1.000GB')
+		self.assertEquals(
+			SIUnitConverter.bytes_to_unit(1000).lstrip(),
+			'1.0kB')
+		self.assertEquals(
+			SIUnitConverter.bytes_to_unit(1000*1000).lstrip(),
+			'1.00MB')
+		self.assertEquals(
+			SIUnitConverter.bytes_to_unit(1000**3).lstrip(),
+			'1.000GB')
+		self.assertEquals(
+			SIUnitConverter.bytes_to_unit(1000**4).lstrip(),
+			'1.0000TB')
+
+
+	def test_si_overlimit(self):
+		'''Exceeding the largest IEC unit is ok'''
+		self.assertEquals(
+			SIUnitConverter.bytes_to_unit(1000**5).lstrip(),
+			'1000.0000TB')
 
 
 	def test_iec_thresh(self):

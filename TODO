@@ -22,11 +22,12 @@ Features
 
 - Add a built-in way to remove an old lockfile
 
-- Compress the signature file
+- Checkpoint the dest signature file.
 
 - Transfer statistics
+  - They're kept, so surface them.
 
-- Retry failed downloads
+- Retry failed downloads?
 
 - Write in-progress downloads to disk instead of memory, like rsync
 

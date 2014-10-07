@@ -63,6 +63,9 @@ def dest_side(opt, args):
     else:
         src_strfile = hashfile_contents.splitlines()
 
+    # Release hashfile contents from memory.
+    hashfile_contents = None
+
     if not src_strfile[-1].startswith("FINAL:"):
         raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears "
                                         "to be missing!" % hashurl)
@@ -119,7 +122,8 @@ def _dest_impl(abs_hashfile, src_hashlist, shortname, opt):
     if opt.verify_only:
         return _verify_impl(needed, not_needed, opt)
     else:
-        return _fetch_remote_impl(needed, not_needed, dst_hashlist, opt)
+        return _fetch_remote_impl(needed, not_needed, 
+                                    dst_hashlist, abs_hashfile, opt)
 
 
 def _verify_impl(needed, not_needed, opt):
@@ -163,19 +167,22 @@ def _verify_impl(needed, not_needed, opt):
         return True
 
 
-def _fetch_remote_impl(needed, not_needed, dst_hashlist, opt):
+def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
 
-    fetch_added = fetch_needed(needed, opt.source_url, opt)
-    if fetch_added is not None:
-        delete_status = delete_not_needed(not_needed, opt.dest_dir,
-                                            opt)
+    # fetch_needed() does almost all the work.
+    (fetch_added, fetch_err_count) = fetch_needed(needed, opt.source_url, opt)
 
-    if (fetch_added is None or not delete_status):
+    # Don't delete things if we had transfer problems. It's safer.
+    if fetch_err_count == 0:
+        delete_status = delete_not_needed(not_needed, opt.dest_dir, opt)
+
+    if (fetch_err_count > 0 or not delete_status):
         log.error("Sync failed")
         return False
 
-    if fetch_added is not None:
-        log.debug("Adding new entries to destination hashlist")
+    if len(fetch_added) > 0:
+        log.debug("Adding %d new entries to destination hashlist",
+                    len(fetch_added))
         dst_hashlist.extend(fetch_added)
 
     if not opt.no_write_hashfile and dst_hashlist is not None:
