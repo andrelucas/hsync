@@ -74,7 +74,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
     def rundiff(self, in_dir, out_dir=None, delete=True,
                 src_optlist=None, dst_optlist=None, web=False,
                 diff_optlist=None, run_diff=True,
-                clnt_repeat=1):
+                srvr_repeat=1, clnt_repeat=1):
         '''
         Set up copies of an existing tree (or existing trees), run hsync
         and report on any differences.
@@ -119,7 +119,8 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
         srcopt = ['-S', in_tmp]
         if src_optlist is not None:
             srcopt.extend(src_optlist)
-        self.assertTrue(hsync.main(srcopt))
+        for n in range(1, srvr_repeat + 1):
+            self.assertTrue(hsync.main(srcopt))
 
         for n in range(1, clnt_repeat + 1):
             in_url = in_tmp
@@ -304,7 +305,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
         tarball = 'zlib-1.2.8.tar.gz'
         tardir = 'zlib-1.2.8'
         subprocess.check_call(("tar xzf %s" % tarball).split())
-        self.rundiff(tardir, None, web=True, clnt_repeat=10)
+        self.rundiff(tardir, None, web=True, srvr_repeat=2, clnt_repeat=5)
         shutil.rmtree(tardir)
 
     def test_web_tarball_compress_idempotent(self):
@@ -315,7 +316,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
         tarball = 'zlib-1.2.8.tar.gz'
         tardir = 'zlib-1.2.8'
         subprocess.check_call(("tar xzf %s" % tarball).split())
-        self.rundiff(tardir, None, web=True, clnt_repeat=10,
+        self.rundiff(tardir, None, web=True, srvr_repeat=2, clnt_repeat=5,
                      src_optlist=['-z'], dst_optlist=['-Z'])
         shutil.rmtree(tardir)
 
