@@ -142,7 +142,8 @@ def _verify_impl(needed, not_needed, opt):
                         shown_header = True
 
                     print("+ %s" % fh.fpath, end='')
-                    if not fh.contents_differ and fh.metadata_differs:
+                    if not fh.dest_missing and \
+                            not fh.contents_differ and fh.metadata_differs:
                         print(" (metadata change only)")
                     else:
                         print('')
