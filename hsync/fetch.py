@@ -358,10 +358,10 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
 
         # Fetch_contents will display progress information itself.
         contents = fetch_contents(
-                            source_url, opts,
-                            for_filehash=fh,
-                            file_count_number=counters.differing_file_index,
-                            file_count_total=counters.contents_differ_count)
+            source_url, opts,
+            for_filehash=fh,
+            file_count_number=counters.differing_file_index,
+            file_count_total=counters.contents_differ_count)
 
         if contents is None:
             if opts.fail_on_errors:
