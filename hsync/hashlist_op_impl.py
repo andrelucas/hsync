@@ -9,15 +9,15 @@ import os
 from random import SystemRandom
 import re
 
-
 from exceptions import *
 from filehash import *
-
+from utility import is_dir_excluded, is_path_pre_excluded
 
 log = logging.getLogger()
 
+
 def hashlist_generate(srcpath, opts, source_mode=True,
-                        existing_hashlist=None):
+                      existing_hashlist=None):
     '''
     Generate the hashlist for the given path.
 
@@ -37,7 +37,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
     '''
 
     log.debug("hashlist_generate: srcpath %s source_mode %s",
-                srcpath, source_mode)
+              srcpath, source_mode)
     if os.path.exists(srcpath):
         if not os.path.isdir(srcpath):
             raise NonDirFoundAtDirLocationError(
@@ -70,34 +70,34 @@ def hashlist_generate(srcpath, opts, source_mode=True,
             print("Scanning source filesystem%s" % (source_extramsg))
         else:
             print("Comparing local filesystem to signature file%s" %
-                    (source_extramsg))
+                  (source_extramsg))
 
     if opts.progress and source_mode:
-        verb="Add"
+        verb = "Add"
     else:
-        verb="Scan"
+        verb = "Scan"
 
     re_globmatch = re.compile(r'[*?\[\]]')
 
     if opts.exclude_dir:
         excdirs = set([d for d in opts.exclude_dir
-                            if not re_globmatch.search(d)])
+                       if not re_globmatch.search(d)])
         excdirs_glob = set([d for d in opts.exclude_dir
                             if not d in excdirs])
     else:
         excdirs = set()
 
     ##
-    ## Walk the filesystem.
+    # Walk the filesystem.
     ##
     for root, dirs, files in os.walk(srcpath):
 
-        relroot = root[len(srcpath)+1:]
+        relroot = root[len(srcpath) + 1:]
         fulldirs = [os.path.join(relroot, d) for d in dirs]
 
         if log.isEnabledFor(logging.DEBUG):
             logging.debug("os.walk: root %s dirs %s files %s",
-                            root, dirs, files)
+                          root, dirs, files)
 
         dirs.sort()
 
@@ -111,7 +111,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
                             print("Skipping ignore-able dir %s" % dirname)
                         dirs.remove(dirname)
                         log.debug("Exclude dir '%s' full path '%s'",
-                            dirname, fulldirname)
+                                  dirname, fulldirname)
 
         # Likewise, handle the user's exclusions. This makes the assumption
         # that the list of exclusions will not be much larger than the list of
@@ -127,10 +127,10 @@ def hashlist_generate(srcpath, opts, source_mode=True,
                 if fulldirname in excdirs:
                     if source_mode and opts.verbose:
                         print("Skipping manually-excluded dir %s" %
-                                fulldirname)
+                              fulldirname)
                     log.debug("Exclude dir '%s'", fulldirname)
                     dirs.remove(dirname)
-                    done_skip=True
+                    done_skip = True
 
                 # Glob match.
                 for glob in excdirs_glob:
@@ -138,25 +138,24 @@ def hashlist_generate(srcpath, opts, source_mode=True,
                     if fnmatch.fnmatch(fulldirname, glob):
                         if source_mode and opts.verbose:
                             print("Skipping manually-excluded dir %s "
-                                    "matching '%s'" % (fulldirname, glob))
+                                  "matching '%s'" % (fulldirname, glob))
                         log.debug("Glob exclude dir '%s' glob '%s",
-                                    fulldirname, glob)
+                                  fulldirname, glob)
                         dirs.remove(dirname)
-                        done_skip=True
+                        done_skip = True
 
             if done_skip:
                 log.debug("dirs now %s", dirs)
-
 
         # Handle directories.
         for n, dirname in enumerate(dirs, start=1):
             fpath = os.path.join(root, dirname)
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path,
-                                            root=srcpath,
-                                            defer_read=defer_fs_read)
+                                         root=srcpath,
+                                         defer_read=defer_fs_read)
             if opts.progress:
-                print("D: %s dir %s (dir-in-dir %d/%d)" % 
-                        (verb, fpath, n, len(dirs)))
+                print("D: %s dir %s (dir-in-dir %d/%d)" %
+                      (verb, fpath, n, len(dirs)))
             elif opts.verbose:
                 print("%s dir: %s" % (verb, fpath))
             hashlist.append(fh)
@@ -172,7 +171,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
                     filename == opts.hash_file + '.gz' or \
                     filename == opts.hash_file + '.gz.lock':
                 log.debug("Skipping pre-existing hash file '%s'",
-                            opts.hash_file)
+                          opts.hash_file)
                 continue
 
             skipped = False
@@ -191,13 +190,13 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
             if opts.progress:
                 print("F: %s [dir %s] file %s (file-in-dir %d/%d)" %
-                                (verb, root, filename, n, len(files)))
+                      (verb, root, filename, n, len(files)))
             elif opts.verbose:
                 print("%s file: %s" % (verb, fpath))
 
             fh = FileHash.init_from_file(fpath, trim=opts.trim_path,
-                                            root=srcpath,
-                                            defer_read=defer_fs_read)
+                                         root=srcpath,
+                                         defer_read=defer_fs_read)
 
             if not opts.always_checksum and fh.is_file:
                 # Attempt to bypass the checksum, if the old HSYNC.SIG has it.
@@ -207,7 +206,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
                     if fh.fpath in lookup_existing:
                         oldfh = lookup_existing[fh.fpath]
                         log.debug("'%s': Found old entry (%s)",
-                                    fh.fpath, repr(oldfh))
+                                  fh.fpath, repr(oldfh))
                         if fh.safe_to_skip(oldfh):
                             do_checksum = False
                             fh.inherit_attributes(oldfh)
@@ -225,7 +224,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
 
 def sigfile_write(hashlist, abs_path, opts,
-                    use_tmp=False, verb='Generating', no_compress=False):
+                  use_tmp=False, verb='Generating', no_compress=False):
 
     compress = False
     if not no_compress:
@@ -238,7 +237,7 @@ def sigfile_write(hashlist, abs_path, opts,
 
     if not opts.quiet:
         print("%s signature file %s compress %s" %
-                (verb, abs_path, compress))
+              (verb, abs_path, compress))
 
     log.debug("Sorting signature file")
     hashlist.sort(key=lambda fh: fh.fpath)
@@ -265,11 +264,11 @@ def sigfile_write(hashlist, abs_path, opts,
 
     if use_tmp:
         log.debug("Moving hashfile into place: '%s' -> '%s'",
-                    abs_path_tmp, abs_path)
+                  abs_path_tmp, abs_path)
 
         if compress:
             log.debug("Compressing hashfile '%s' to '%s'",
-                        abs_path_tmp, abs_path)
+                      abs_path_tmp, abs_path)
             f_in = open(abs_path_tmp, 'r')
             f_out = gzip.open(abs_path, 'wb')
             f_out.writelines(f_in)
@@ -281,7 +280,7 @@ def sigfile_write(hashlist, abs_path, opts,
         else:
             if os.rename(abs_path_tmp, abs_path) == -1:
                 raise OSOperationFailedError("Failed to rename '%s' to '%s'",
-                                            abs_path_tmp, abs_path)
+                                             abs_path_tmp, abs_path)
 
     return True
 
@@ -318,9 +317,9 @@ def hashlist_from_stringlist(strfile, opts, root=None):
     hashlist = []
     for l in strfile:
         if l.startswith("#"):
-            pass # FFR
+            pass  # FFR
         if l.startswith("FINAL: "):
-            pass # FFR
+            pass  # FFR
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=root)
             hashlist.append(fh)
@@ -329,8 +328,8 @@ def hashlist_from_stringlist(strfile, opts, root=None):
 
 
 def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
-                    opportunistic_write=False, opwrite_path=None,
-                    source_side=False):
+                   opportunistic_write=False, opwrite_path=None,
+                   source_side=False):
     '''
     Check the dstpath against the provided hashlist.
 
@@ -344,7 +343,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
     # Take the simple road. Generate a hashlist for the destination.
     dst_hashlist = hashlist_generate(dstpath, opts, source_mode=False,
-                                        existing_hashlist=existing_hashlist)
+                                     existing_hashlist=existing_hashlist)
 
     no_compress = False
     if source_side:
@@ -353,8 +352,8 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     if opportunistic_write:
         assert opwrite_path is not None
         sigfile_write(dst_hashlist, opwrite_path, opts,
-                        use_tmp=True, verb='Caching scanned',
-                        no_compress=no_compress)
+                      use_tmp=True, verb='Caching scanned',
+                      no_compress=no_compress)
 
     dst_fdict = hashlist_to_dict(dst_hashlist)
 
@@ -362,9 +361,9 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
     if opts.exclude_dir:
         direx = set([d for d in opts.exclude_dir
-                        if not re_globmatch.search(d)])
+                     if not re_globmatch.search(d)])
         direx_glob = set([d for d in opts.exclude_dir
-                        if not d in direx])
+                          if not d in direx])
     else:
         direx = set()
         direx_glob = set()
@@ -379,41 +378,22 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     if opts.set_group:
         mapper.set_default_group(opts.set_group)
 
-
-    for fpath, fh in [(k,src_fdict[k]) for k in sorted(src_fdict.keys())]:
-
-        exclude = False
+    for fpath, fh in [(k, src_fdict[k]) for k in sorted(src_fdict.keys())]:
 
         # Generate (pointless) stat.
         if not fh.is_dir and fh.size_is_known:
             opts.stats.bytes_total += fh.size
 
+        assert fpath == fh.fpath
+
         # Process exclusions.
-        if fh.is_dir and fpath in direx:
-            log.debug("%s: Exclude dir", fpath)
-            dpath = fpath.rstrip(os.sep) + os.sep # Make sure it ends in '/'.
-            excluded_dirs.add(dpath)
-            log.debug("Added exclusion dir: '%s'", dpath)
-            exclude = True
-
-        # Process directory globs.
-        if not exclude and fh.is_dir:
-            for glob in direx_glob:
-                if fnmatch.fnmatch(fpath, glob):
-                    log.debug("%s: Exclude dir from glob '%s'", fpath, glob)
-                    dpath = fpath.rstrip(os.sep) + os.sep
-                    excluded_dirs.add(dpath)
-                    log.debug("Added excluson dir: '%s'", dpath)
-                    exclude = True
-
-        if not exclude: # No point checking twice.
-            for exc in excluded_dirs:
-                if fpath.startswith(exc):
-                    log.debug("Excluded '%s': Under '%s'", fpath, exc)
-                    exclude = True
-
-        if exclude:
+        if is_path_pre_excluded(fpath, excluded_dirs):
             continue
+
+        if fh.is_dir:
+            if is_dir_excluded(fpath, direx, direx_glob, excluded_dirs):
+                log.debug("Dir '%s' excluded", fpath)
+                continue
 
         # If the user overrode stuff, set that up here.
         if opts.set_user:
@@ -427,8 +407,9 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         if fpath in dst_fdict:
 
             if not src_fdict[fpath].compare(dst_fdict[fpath],
-                                    ignore_mode=opts.ignore_mode,
-                                    trust_mtime=(not opts.always_checksum)):
+                                            ignore_mode=opts.ignore_mode,
+                                            trust_mtime=(
+                                                not opts.always_checksum)):
                 log.debug("%s: needed", fpath)
                 # Store a reference to the object at the destination.
                 # This can be used to update the dest's HSYNC.SIG file and

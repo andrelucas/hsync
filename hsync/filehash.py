@@ -9,6 +9,10 @@ from stat import *
 from idmapper import *
 from exceptions import *
 
+log = logging.getLogger()
+
+
+
 
 class NotHashableException(Exception):
     pass
@@ -41,8 +45,6 @@ class HashStringFormatError(Exception):
 class BadSymlinkFormatError(HashStringFormatError):
     pass
 
-
-log = logging.getLogger()
 
 fileignore = [
     re.compile(r'(~|\.swp)$'),
@@ -155,43 +157,6 @@ class FileHash(object):
         self.hash_safe = True
         return self
 
-    def read_file_contents(self):
-
-        if not self.is_file:
-            raise
-
-        log.debug("Reading file '%s' contents", self.fullpath)
-        self.hash_file()
-        self.has_read_contents = True
-
-    def safe_to_skip(self, other):
-        '''
-        Determine if we are sufficiently similar to FileHandle object other
-        to avoid reading the file again.
-        '''
-        log.debug("'%s': skip check", self.fpath)
-        if self.fpath != other.fpath:
-            log.debug("names differ, fail skip check")
-            return False
-        if self.size != other.size:
-            log.debug("sizes differ, fail skip check")
-            return False
-        if self.mtime != other.mtime:
-            log.debug("mtimes differ, fail skip check")
-            return False
-        log.debug("skip check pass")
-        return True
-
-    def inherit_attributes(self, other):
-        '''
-        Copy attributes from another FileHandle object, in an attempt to
-        save on IO. Don't copy stuff we don't need to.
-
-        '''
-        log.debug("inherit_attributes('%s'): grabbing hash", self.fpath)
-        self.hashstr = other.hashstr
-        self.has_read_contents = True
-
     @classmethod
     def init_from_string(cls, string, trim=False, root=''):
 
@@ -225,8 +190,8 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
-        self.dest_missing = True  # Safe default.
-        self.contents_differ = True  # Safe default.
+        #self.dest_missing = True
+        #self.contents_differ = False
         self.has_real_hash = False
 
         self.is_dir = self.is_link = self.is_file = False
@@ -275,6 +240,43 @@ class FileHash(object):
 
         self.hash_safe = True
         return self
+
+    def read_file_contents(self):
+
+        if not self.is_file:
+            raise
+
+        log.debug("Reading file '%s' contents", self.fullpath)
+        self.hash_file()
+        self.has_read_contents = True
+
+    def safe_to_skip(self, other):
+        '''
+        Determine if we are sufficiently similar to FileHandle object other
+        to avoid reading the file again.
+        '''
+        log.debug("'%s': skip check", self.fpath)
+        if self.fpath != other.fpath:
+            log.debug("names differ, fail skip check")
+            return False
+        if self.size != other.size:
+            log.debug("sizes differ, fail skip check")
+            return False
+        if self.mtime != other.mtime:
+            log.debug("mtimes differ, fail skip check")
+            return False
+        log.debug("skip check pass")
+        return True
+
+    def inherit_attributes(self, other):
+        '''
+        Copy attributes from another FileHandle object, in an attempt to
+        save on IO. Don't copy stuff we don't need to.
+
+        '''
+        log.debug("inherit_attributes('%s'): grabbing hash", self.fpath)
+        self.hashstr = other.hashstr
+        self.has_read_contents = True
 
     def _type_to_string(self, mode):
         ftype = 'UNKNOWN'

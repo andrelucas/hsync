@@ -346,12 +346,13 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
 
     if fh.dest_missing or fh.contents_differ:
 
+        contents_differ = getattr(fh, 'contents_differ', False)
         counters.differing_file_index += 1
 
         opts.stats.file_contents_differed += 1
 
         log.debug("Fetching: '%s' dest_missing %s contents_differ %s",
-                  fh.fpath, fh.dest_missing, fh.contents_differ)
+                  fh.fpath, fh.dest_missing, contents_differ)
 
         if not opts.quiet and sys.stdout.isatty():
             print("F: %s" % fh.fpath, end='')

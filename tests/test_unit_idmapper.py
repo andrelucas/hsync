@@ -7,6 +7,7 @@ import pwd
 import unittest
 
 from hsync.idmapper import *
+from hsync.utility import is_dir_excluded, is_path_pre_excluded
 
 log = logging.getLogger()
 
