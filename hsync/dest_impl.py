@@ -6,6 +6,7 @@ import gzip
 import logging
 import os
 import tempfile
+import urllib2
 
 from fetch import fetch_contents, fetch_needed, delete_not_needed
 from filehash import *
