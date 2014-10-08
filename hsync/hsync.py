@@ -30,73 +30,74 @@ def getopts(cmdargs):
 
     send = optparse.OptionGroup(p, "Send-side options")
     send.add_option("-S", "--source-dir",
-        help="Specify the source directory")
+                    help="Specify the source directory")
     send.add_option("-z", "--compress-signature", action="store_true",
-        help="Compress the signature file using zlib")
+                    help="Compress the signature file using zlib")
     p.add_option_group(send)
 
     recv = optparse.OptionGroup(p, "Receive-side options")
     recv.add_option("-D", "--dest-dir",
-        help="Specify the destination directory")
+                    help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
-        help="Specify the data source URL")
+                    help="Specify the data source URL")
     recv.add_option("--no-delete", action="store_true",
-        help="Never remove files from the destination, even if they're "
-            "not present on the source")
+                    help="Never remove files from the destination, even if "
+                    "they're not present on the source")
     recv.add_option("-Z", "--remote-sig-compressed", action="store_true",
-        help="Fetch remote HSYNC.SIG.gz instead of HSYNC.SIG")
+                    help="Fetch remote HSYNC.SIG.gz instead of HSYNC.SIG")
     recv.add_option("--set-user",
-        help="Specify the owner for local files")
+                    help="Specify the owner for local files")
     recv.add_option("--set-group",
-        help="Specify the group for local files")
+                    help="Specify the group for local files")
     recv.add_option("--no-write-hashfile", action="store_true",
-        help="Don't write a signature file after sync")
+                    help="Don't write a signature file after sync")
     recv.add_option("--ignore-mode", action="store_true",
-        help="Ignore differences in file modes")
+                    help="Ignore differences in file modes")
     recv.add_option("--http-user",
-        help="Specify the HTTP auth user")
+                    help="Specify the HTTP auth user")
     recv.add_option("--http-pass",
-        help="Specify the HTTP auth password")
+                    help="Specify the HTTP auth password")
     recv.add_option("--http-auth-type", default='basic',
-        help="Specify HTTP auth type (basic|digest) "
-            "[default: %default]")
+                    help="Specify HTTP auth type (basic|digest) "
+                    "[default: %default]")
     recv.add_option("--proxy-url",
-        help="Specify the proxy URL to use")
+                    help="Specify the proxy URL to use")
     p.add_option_group(recv)
 
     recv.add_option("-U", "--signature-url",
-        help="Specify the signature file's URL [default: "
-                "<source_url>/HSYNC.SIG]")
+                    help="Specify the signature file's URL [default: "
+                    "<source_url>/HSYNC.SIG]")
 
     meta = optparse.OptionGroup(p, "Other options")
     meta.add_option("--version", action="store_true",
-        help="Show the program version")
+                    help="Show the program version")
     meta.add_option("-V", "--verify-only", action="store_true",
-        help="Verify only, do not transfer or delete files")
+                    help="Verify only, do not transfer or delete files")
     meta.add_option("--fail-on-errors", action="store_true",
-        help="Fail on any error. Default is to try to carry on")
+                    help="Fail on any error. Default is to try to carry on")
     meta.add_option("-c", "--always-checksum", action="store_true",
-        help="Always read and re-checksum files, never trust file "
-            "modification times or other metadata")
+                    help="Always read and re-checksum files, never trust "
+                    "file modification times or other metadata")
     meta.add_option("--hash-file", default="HSYNC.SIG",
-        help="Specify the hash filename [default: %default]")
+                    help="Specify the hash filename [default: %default]")
     meta.add_option("--no-ignore-dirs", action="store_true",
-        help="Don't trim common dirs such as .git, .svn and CVS")
+                    help="Don't trim common dirs such as .git, .svn and CVS")
     meta.add_option("--no-ignore-files", action="store_true",
-        help="Don't trim common ignore-able files such as *~ and *.swp")
+                    help="Don't trim common ignore-able files such as *~ and "
+                    "*.swp")
     meta.add_option("--no-trim-path", action="store_false",
-        default=True, dest='trim_path',
-        help="Don't trim the top-level path from filenames. It's safer to "
-            "leave this well alone.")
+                    default=True, dest='trim_path',
+                    help="Don't trim the top-level path from filenames. It's "
+                    "safer to leave this well alone.")
     meta.add_option("-X", "--exclude-dir", action="append",
-        help="Specify a directory path (relative to the root) to ignore. "
-            "On the server side, this simply doesn't checksum the file, "
-            "which has the effect of rendering it invisible (and deletable!)"
-            "on the client side. On the client side, it prevents processing "
-            "of the path.")
-    meta.add_option("--fetch-blocksize", default=32*1000,
-        help="Specify the number of bytes to retrieve at a time "
-            "[default: %default]")
+                    help="Specify a directory path (relative to the root) to "
+                    "ignore. On the server side, this simply doesn't "
+                    "checksum the file, which has the effect of rendering it "
+                    "invisible (and deletable!) on the client side. On the "
+                    "client side, it prevents processing of the path.")
+    meta.add_option("--fetch-blocksize", default=32 * 1000,
+                    help="Specify the number of bytes to retrieve at a time "
+                    "[default: %default]")
     # This is used to pass stats around the app.
     meta.add_option("--stats", help=optparse.SUPPRESS_HELP)
 
@@ -105,20 +106,19 @@ def getopts(cmdargs):
     output = optparse.OptionGroup(p, "Output options")
 
     output.add_option("-v", "--verbose", action="store_true",
-        help="Enable verbose output")
+                      help="Enable verbose output")
     output.add_option("-d", "--debug", action="store_true",
-        help="Enable debugging output")
+                      help="Enable debugging output")
     output.add_option("-q", "--quiet", action="store_true",
-        help="Reduce output further")
+                      help="Reduce output further")
     recv.add_option("-P", "--progress", action="store_true",
-        help="Show download progress")
+                    help="Show download progress")
 
     p.add_option_group(output)
 
     (opt, args) = p.parse_args(args=cmdargs)
 
     return (opt, args)
-
 
 
 def init_stats():
@@ -153,10 +153,6 @@ def main(cmdargs):
         print("Hsync version %s" % __version__)
         return True
 
-    if opt.quiet and (opt.verbose or opt.debug):
-        log.error("It doesn't make sense to mix quiet and verbose options")
-        return False
-
     level = logging.WARNING
     if opt.verbose:
         level = logging.INFO
@@ -166,6 +162,10 @@ def main(cmdargs):
 
     logging.basicConfig(level=level)
     log = logging.getLogger()
+
+    if opt.quiet and (opt.verbose or opt.debug):
+        log.error("It doesn't make sense to mix quiet and verbose options")
+        return False
 
     # As soon as logging is configured, say what we're doing.
     if log.isEnabledFor(logging.DEBUG):
@@ -209,15 +209,16 @@ def main(cmdargs):
         if opt.signature_url and not opt.source_url:
             up = urlparse.urlparse(opt.signature_url)
             opt.source_url = urlparse.urlunparse([up.scheme, up.netloc,
-                                    os.path.dirname(up.path), '', '', ''])
+                                                  os.path.dirname(up.path),
+                                                  '', '', ''])
             log.debug("Synthesised source URL '%s' from signature URL '%s'",
-                        opt.source_url, opt.signature_url)
+                      opt.source_url, opt.signature_url)
 
         return dest_side(opt, args)
 
     else:
         print("You gave me nothing to do! Try '%s --help'." %
-            os.path.basename(sys.argv[0]))
+              os.path.basename(sys.argv[0]))
         return True
 
 

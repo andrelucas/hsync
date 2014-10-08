@@ -60,22 +60,18 @@ def source_generate(abs_hashfile, opt):
         if not opt.quiet:
             print("Reading existing hashfile")
 
-        # Fetch the signature file.
-        hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                            short_name=opt.hash_file)
-        # Turn into a hashlist.
         existing_hl = _read_hashlist(abs_hashfile, opt)
 
     hashlist = hashlist_generate(opt.source_dir, opt,
-                                    existing_hashlist=existing_hl)
+                                 existing_hashlist=existing_hl)
 
     if hashlist is not None:
 
         write_success = sigfile_write(hashlist, abs_hashfile, opt,
-                                        use_tmp=True)
+                                      use_tmp=True)
         if not write_success:
             log.error("Failed to write signature file '%s'",
-                os.path.join(opt.source_dir, opt.hash_file))
+                      os.path.join(opt.source_dir, opt.hash_file))
             return False
 
         return True
@@ -115,7 +111,7 @@ def _generate_hashfile_url(opt):
 def _read_hashlist(abs_hashfile, opt):
     # Fetch the signature file.
     hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                                short_name=opt.hash_file)
+                                       short_name=opt.hash_file)
 
     if opt.compress_signature:
         gziptmp = tempfile.NamedTemporaryFile()

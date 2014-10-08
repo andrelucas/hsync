@@ -18,7 +18,7 @@ log = logging.getLogger()
 
 
 ##
-## Dest-side.
+# Dest-side.
 ##
 
 
@@ -33,7 +33,7 @@ def dest_side(opt, args):
     if opt.proxy_url:
         log.debug("Configuring proxy")
         raise Exception("Explicit proxy not yet implemented, use "
-                            "environment variables")
+                        "environment variables")
 
     (hashurl, shortname, compressed_sig) = _configure_hashurl(opt)
 
@@ -42,8 +42,8 @@ def dest_side(opt, args):
         print("Fetching remote hashfile")
 
     hashfile_contents = fetch_contents(hashurl, opt,
-                                        short_name=shortname,
-                                        include_in_total=False)
+                                       short_name=shortname,
+                                       include_in_total=False)
 
     if hashfile_contents is None:
         # We're not coming back from this.
@@ -66,9 +66,9 @@ def dest_side(opt, args):
 
     if not src_strfile[-1].startswith("FINAL:"):
         raise TruncatedHashfileError("'FINAL:'' line of hashfile %s appears "
-                                        "to be missing!" % hashurl)
+                                     "to be missing!" % hashurl)
     src_hashlist = hashlist_from_stringlist(src_strfile, opt,
-                                                root=opt.dest_dir)
+                                            root=opt.dest_dir)
 
     opt.source_url = cano_url(opt.source_url, slash=True)
     log.debug("Source url '%s", opt.source_url)
@@ -76,7 +76,7 @@ def dest_side(opt, args):
     abs_hashfile = os.path.join(opt.dest_dir, opt.hash_file)
     abs_lockfile = abs_hashfile + '.lock'
     log.debug("abs_hashfile '%s' abs_lockfile '%s'",
-                abs_hashfile, abs_lockfile)
+              abs_hashfile, abs_lockfile)
 
     if not os.path.isdir(opt.dest_dir):
         os.makedirs(opt.dest_dir)
@@ -99,29 +99,30 @@ def _dest_impl(abs_hashfile, src_hashlist, shortname, opt):
 
         # Fetch the signature file.
         hashfile_contents = fetch_contents('file://' + abs_hashfile, opt,
-                                                short_name=shortname,
-                                                remote_flag=False,
-                                                include_in_total=False)
+                                           short_name=shortname,
+                                           remote_flag=False,
+                                           include_in_total=False)
         dst_strfile = hashfile_contents.splitlines()
         existing_hl = hashlist_from_stringlist(dst_strfile, opt,
-                                                root=opt.dest_dir)
+                                               root=opt.dest_dir)
 
     # Calculate the differences to the local filesystem.
     #
     # Since we've just done a scan, write the results to the disk - then,
     # if something goes wrong, at least we've saved the scan results.
-    (needed, not_needed, dst_hashlist) = hashlist_check(opt.dest_dir,
-                                            src_hashlist, opt,
-                                            existing_hashlist=existing_hl,
-                                            opportunistic_write=True,
-                                            opwrite_path=abs_hashfile,
-                                            source_side=False)
+    (needed, not_needed, dst_hashlist) = \
+        hashlist_check(opt.dest_dir,
+                       src_hashlist, opt,
+                       existing_hashlist=existing_hl,
+                       opportunistic_write=True,
+                       opwrite_path=abs_hashfile,
+                       source_side=False)
 
     if opt.verify_only:
         return _verify_impl(needed, not_needed, opt)
     else:
-        return _fetch_remote_impl(needed, not_needed, 
-                                    dst_hashlist, abs_hashfile, opt)
+        return _fetch_remote_impl(needed, not_needed,
+                                  dst_hashlist, abs_hashfile, opt)
 
 
 def _verify_impl(needed, not_needed, opt):
@@ -180,15 +181,15 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
 
     if len(fetch_added) > 0:
         log.debug("Adding %d new entries to destination hashlist",
-                    len(fetch_added))
+                  len(fetch_added))
         dst_hashlist.extend(fetch_added)
 
     if not opt.no_write_hashfile and dst_hashlist is not None:
         if not sigfile_write(dst_hashlist, abs_hashfile, opt,
-                                    use_tmp=True, verb='Writing',
-                                    no_compress=True):
+                             use_tmp=True, verb='Writing',
+                             no_compress=True):
             log.error("Failed to write signature file '%s'",
-                        os.path.join(opt.source_dir, opt.hash_file))
+                      os.path.join(opt.source_dir, opt.hash_file))
             return False
 
     if not opt.quiet:
@@ -211,9 +212,7 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
     return True
 
 
-
 def _configure_http_auth(opt):
-
     '''
     Configure HTTP authentication.
 
@@ -231,17 +230,17 @@ def _configure_http_auth(opt):
 
         pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
         pwmgr.add_password(None, opt.source_url,
-                            opt.http_user, opt.http_pass)
+                           opt.http_user, opt.http_pass)
         auth_opener = None
         if opt.http_auth_type == 'digest':
             log.debug("Configuring digest authentication")
             auth_opener = urllib2.build_opener(
-                            urllib2.DigestAuthHandler(pwmgr))
+                urllib2.DigestAuthHandler(pwmgr))
 
         else:
             log.debug("Configuring basic authentication")
             auth_opener = urllib2.build_opener(
-                            urllib2.HTTPBasicAuthHandler(pwmgr))
+                urllib2.HTTPBasicAuthHandler(pwmgr))
 
         urllib2.install_opener(auth_opener)
 
@@ -263,7 +262,7 @@ def _configure_hashurl(opt):
 
         if opt.signature_url.endswith('.gz'):
             log.debug("Assuming compression for signature URL '%s'",
-                        opt.signature_url)
+                      opt.signature_url)
             compressed_sig = True
             shortname += '.gz'
 
@@ -280,4 +279,3 @@ def _configure_hashurl(opt):
         log.debug("Synthesised signature URL '%s'", hashurl)
 
     return (hashurl, shortname, compressed_sig)
-

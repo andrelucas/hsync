@@ -9,17 +9,37 @@ from stat import *
 from idmapper import *
 from exceptions import *
 
-class NotHashableException(Exception): pass
-class UnsupportedFileTypeException(Exception): pass
 
-class LinkOperationOnNonLinkError(Exception): pass
-class PathMustBeAbsoluteError(Exception): pass
-class SymlinkPointsOutsideTreeError(Exception): pass
-class ContentsReadOnNonFileError(Exception): pass
+class NotHashableException(Exception):
+    pass
 
-class HashStringFormatError(Exception): pass
-class BadSymlinkFormatError(HashStringFormatError): pass
 
+class UnsupportedFileTypeException(Exception):
+    pass
+
+
+class LinkOperationOnNonLinkError(Exception):
+    pass
+
+
+class PathMustBeAbsoluteError(Exception):
+    pass
+
+
+class SymlinkPointsOutsideTreeError(Exception):
+    pass
+
+
+class ContentsReadOnNonFileError(Exception):
+    pass
+
+
+class HashStringFormatError(Exception):
+    pass
+
+
+class BadSymlinkFormatError(HashStringFormatError):
+    pass
 
 
 log = logging.getLogger()
@@ -31,6 +51,7 @@ fileignore = [
 dirignore = [
     re.compile(r'^(?:CVS|\.git|\.svn)'),
 ]
+
 
 class FileHash(object):
 
@@ -45,7 +66,6 @@ class FileHash(object):
         self.associated_dest_object = None
         self.size_is_known = False
 
-
     @classmethod
     def init_from_file(cls, fpath, trim=False, root='', defer_read=False):
 
@@ -57,7 +77,7 @@ class FileHash(object):
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug("init_from_file: '%s' trim=%s root='%s' defer_read=%s",
-                fpath, trim, root, defer_read)
+                      fpath, trim, root, defer_read)
 
         self.fullpath = fpath
         self.defer_read = defer_read
@@ -135,7 +155,6 @@ class FileHash(object):
         self.hash_safe = True
         return self
 
-
     def read_file_contents(self):
 
         if not self.is_file:
@@ -144,7 +163,6 @@ class FileHash(object):
         log.debug("Reading file '%s' contents", self.fullpath)
         self.hash_file()
         self.has_read_contents = True
-
 
     def safe_to_skip(self, other):
         '''
@@ -164,7 +182,6 @@ class FileHash(object):
         log.debug("skip check pass")
         return True
 
-
     def inherit_attributes(self, other):
         '''
         Copy attributes from another FileHandle object, in an attempt to
@@ -174,7 +191,6 @@ class FileHash(object):
         log.debug("inherit_attributes('%s'): grabbing hash", self.fpath)
         self.hashstr = other.hashstr
         self.has_read_contents = True
-
 
     @classmethod
     def init_from_string(cls, string, trim=False, root=''):
@@ -194,7 +210,7 @@ class FileHash(object):
         self.gid = self.mapper.get_gid_for_group(group)
         self.mtime = int(float(mtime))  # Robustness principle - old versions
                                         # have float mtime.
-        self.size = int(size) # XXX int length?
+        self.size = int(size)  # XXX int length?
         self.size_is_known = True
 
         self.fpath = fpath
@@ -209,8 +225,8 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
-        self.dest_missing = True # Safe default.
-        self.contents_differ = True # Safe default.
+        self.dest_missing = True  # Safe default.
+        self.contents_differ = True  # Safe default.
         self.has_real_hash = False
 
         self.is_dir = self.is_link = self.is_file = False
@@ -225,11 +241,11 @@ class FileHash(object):
             if not '>>>' in fpath:
                 raise BadSymlinkFormatError(
                     "%s: Expected '>>>' in symlink hash" % fpath)
-            (link,target) = fpath.split('>>>', 1)
+            (link, target) = fpath.split('>>>', 1)
             if not link or not target:
                 raise BadSymlinkFormatError(
                     "%s: Bogus symlink hash" % fpath)
-            target = target.lstrip() # Optional whitespace right of '>>>'.
+            target = target.lstrip()  # Optional whitespace right of '>>>'.
             self.fpath = link
             self.link_target = target
             # Size comparisons are not valid because we are likely to be
@@ -260,23 +276,21 @@ class FileHash(object):
         self.hash_safe = True
         return self
 
-
     def _type_to_string(self, mode):
-            ftype='UNKNOWN'
-            if S_ISDIR(mode):
-                ftype = 'dir'
-            elif S_ISLNK(mode):
-                ftype = 'symlink'
-            elif S_ISREG(mode):
-                ftype = 'file'
-            elif S_ISCHR(mode) or S_ISBLK(mode):
-                ftype='device'
-            elif S_ISFIFO(mode):
-                ftype='pipe'
-            elif S_ISSOCK(mode):
-                ftype='socket'
-            return ftype
-
+        ftype = 'UNKNOWN'
+        if S_ISDIR(mode):
+            ftype = 'dir'
+        elif S_ISLNK(mode):
+            ftype = 'symlink'
+        elif S_ISREG(mode):
+            ftype = 'file'
+        elif S_ISCHR(mode) or S_ISBLK(mode):
+            ftype = 'device'
+        elif S_ISFIFO(mode):
+            ftype = 'pipe'
+        elif S_ISSOCK(mode):
+            ftype = 'socket'
+        return ftype
 
     def sha_hash(self):
         '''
@@ -291,16 +305,14 @@ class FileHash(object):
         md.update(self.hashstr)
         return md.hexdigest()
 
-
     def hash_file(self):
         log.debug("File: %s", self.fullpath)
-        f = open(self.fullpath, 'rb').read() # Could read a *lot*.
+        f = open(self.fullpath, 'rb').read()  # Could read a *lot*.
         md = hashlib.sha256()
         md.update(f)
         log.debug("Hash for %s: %s", self.fpath, md.hexdigest())
         self.contents_hash = md.digest()
         self.hashstr = md.hexdigest()
-
 
     def presentation_format(self):
         fpath = self.fpath
@@ -308,11 +320,10 @@ class FileHash(object):
             fpath += '>>> %s' % self.link_target
 
         return "%s %06o %s %s %s %s %s" % (
-                       self.hashstr, self.mode,
-                       self.user, self.group,
-                       int(self.mtime), self.size,
-                       fpath)
-
+            self.hashstr, self.mode,
+            self.user, self.group,
+            int(self.mtime), self.size,
+            fpath)
 
     def can_compare(self, other):
         if self.has_real_hash and other.has_real_hash:
@@ -320,18 +331,16 @@ class FileHash(object):
         else:
             return False
 
-
     def compare_contents(self, other):
         if not self.has_real_hash:
             raise NotHashableException(
-                    "%s (lhs) isn't comparable" % self.fpath)
+                "%s (lhs) isn't comparable" % self.fpath)
         if not other.has_real_hash:
             raise NotHashableException(
-                    "%s (rhs) isn't comparable" % other.fpath)
+                "%s (rhs) isn't comparable" % other.fpath)
 
         log.debug("compare_contents: %s, %s", self, other)
         return self.hashstr == other.hashstr
-
 
     def compare(self, other,
                 ignore_name=False,
@@ -355,9 +364,9 @@ class FileHash(object):
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug("compare: self %s other %s ignore_uid_gid %s "
-                "ignore_mode %s trust_mtime %s",
-                repr(self), repr(other),
-                ignore_uid_gid, ignore_mode, trust_mtime)
+                      "ignore_mode %s trust_mtime %s",
+                      repr(self), repr(other),
+                      ignore_uid_gid, ignore_mode, trust_mtime)
 
         if not ignore_name:
             if self.fpath != other.fpath:
@@ -366,7 +375,6 @@ class FileHash(object):
 
         if self.size_comparison_valid and self.size != other.size:
             log.debug("Object sizes differ")
-            contents_differ = True
 
         if not ignore_mode:
             if self.mode != other.mode:
@@ -406,17 +414,16 @@ class FileHash(object):
                     log.debug("Hash verified")
 
         log.debug("'%s': Identity check: name %s contents %s metadata %s "
-                    "mtime %s", self.fpath, differ_name, differ_contents,
-                                differ_metadata, differ_mtime)
+                  "mtime %s", self.fpath, differ_name, differ_contents,
+                  differ_metadata, differ_mtime)
 
         self.contents_differ = differ_contents
         self.metadata_differs = differ_metadata
         self.mtime_differs = differ_mtime
 
         differs = differ_contents or differ_metadata or \
-                    differ_mtime or differ_name
+            differ_mtime or differ_name
         return not differs
-
 
     def normalise_symlink(self, root):
         '''
@@ -425,7 +432,7 @@ class FileHash(object):
         '''
         if not S_ISLNK(self.mode):
             raise LinkOperationOnNonLinkError("'%s' is not a symlink",
-                                                self.fpath)
+                                              self.fpath)
         log.debug("normalise_symlink: %s", repr(self))
 
         self.link_normalised = True
@@ -433,13 +440,12 @@ class FileHash(object):
 
         if self.link_relpath.startswith(os.sep):
             log.warn("'%s' (symlink to '%s') points outside the tree - "
-                        "normalising to '%s'",
-                        self.fpath, self.link_target, self.link_relpath)
+                     "normalising to '%s'",
+                     self.fpath, self.link_target, self.link_relpath)
             self.link_target = self.link_relpath
             self.link_is_external = True
         else:
             self.link_is_external = False
-
 
     def source_symlink_make_relative(self, srcdir, absolute_is_error=False):
         '''
@@ -462,16 +468,15 @@ class FileHash(object):
 
         if not S_ISLNK(self.mode):
             raise LinkOperationOnNonLinkError("'%s' is not a symlink",
-                                                self.fpath)
+                                              self.fpath)
         log.debug("source_symlink_make_relative: %s, %s",
-                    self.fpath, self.link_target)
+                  self.fpath, self.link_target)
 
         topdir = os.path.normpath(srcdir)
         if not topdir.endswith(os.sep):
             topdir += os.sep
 
         tpath = self.link_target
-        norm_tpath = os.path.normpath(tpath)
 
         spath_full = os.path.join(topdir, self.fpath)
         norm_spath_full = os.path.normpath(spath_full)
@@ -499,13 +504,11 @@ class FileHash(object):
 
             # We're not under the source path -> absolute link.
             log.debug("link cannot be made relative : '%s' -> '%s'",
-                        tpath, norm_tpath_full)
+                      tpath, norm_tpath_full)
             return norm_tpath_full
-
 
     def __str__(self):
         return self.presentation_format()
-
 
     def __repr__(self):
         if self.is_link:
@@ -513,12 +516,8 @@ class FileHash(object):
         else:
             fpath = self.fpath
         return "[FileHash: fullpath %s fpath %s size %d " \
-                "mode %06o mtime %d uid %d gid %d hashstr %s]" % (
-                        self.fullpath, fpath,
-                        self.size, self.mode,
-                        self.mtime,
-                        self.uid, self.gid, self.hashstr)
-
-
-
-
+            "mode %06o mtime %d uid %d gid %d hashstr %s]" % (
+                self.fullpath, fpath,
+                self.size, self.mode,
+                self.mtime,
+                self.uid, self.gid, self.hashstr)
