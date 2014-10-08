@@ -37,7 +37,7 @@ def is_dir_excluded(fpath, direx, direx_glob, excluded_dirs=None):
     '''
     exclude = False
     if excluded_dirs is None:
-        exluded_dirs = set()
+        excluded_dirs = set()
 
     if fpath in direx:
         log.debug("%s: Exclude dir", fpath)
@@ -74,8 +74,6 @@ def is_path_pre_excluded(fpath, excluded_dirs, is_dir=False):
         fpath += os.sep
 
     for d in excluded_dirs:
-        log.debug("XXX checking '%s' against excluded dir '%s'",
-                  fpath, d)
         if fpath.startswith(d):
             log.debug("Excluding '%s' under excluded dir '%s'",
                       fpath, d)

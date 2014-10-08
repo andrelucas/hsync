@@ -93,18 +93,21 @@ def hashlist_generate(srcpath, opts, source_mode=True,
     for root, dirs, files in os.walk(srcpath):
 
         relroot = root[len(srcpath) + 1:]
-        fulldirs = [os.path.join(relroot, d) for d in dirs]
 
         if log.isEnabledFor(logging.DEBUG):
             logging.debug("os.walk: root %s dirs %s files %s",
                           root, dirs, files)
 
         # See if the directory list can be pruned.
+        # XXX refactor.
         if not opts.no_ignore_dirs:
             for dirname in dirs:
                 fulldirname = os.path.join(relroot, dirname)
                 for di in dirignore:
-                    if di.search(fulldirname):
+                    # dirignore is a regex anchored to the start - need to
+                    # use the short dirname, e.g. 'CVS', as opposed to the
+                    # long dirname, 'stuff/CVS'.
+                    if di.search(dirname):
                         if source_mode and opts.verbose:
                             print("Skipping ignore-able dir %s" % dirname)
                         dirs.remove(dirname)
@@ -114,33 +117,16 @@ def hashlist_generate(srcpath, opts, source_mode=True,
         # Likewise, handle the user's exclusions. This makes the assumption
         # that the list of exclusions will not be much larger than the list of
         # directories.
-        # XXX refactor.
 
         if opts.exclude_dir:
             done_skip = False
 
-            for dirname, fulldirname in zip(dirs, fulldirs):
+            for dirname in dirs:
+                fulldirname = os.path.join(relroot, dirname)
 
-                # String match.
-                if fulldirname in excdirs:
-                    if source_mode and opts.verbose:
-                        print("Skipping manually-excluded dir %s" %
-                              fulldirname)
-                    log.debug("Exclude dir '%s'", fulldirname)
+                if is_dir_excluded(fulldirname, excdirs, excdirs_glob):
                     dirs.remove(dirname)
                     done_skip = True
-
-                # Glob match.
-                for glob in excdirs_glob:
-                    log.debug("XXX fulldirname %s glob %s", fulldirname, glob)
-                    if fnmatch.fnmatch(fulldirname, glob):
-                        if source_mode and opts.verbose:
-                            print("Skipping manually-excluded dir %s "
-                                  "matching '%s'" % (fulldirname, glob))
-                        log.debug("Glob exclude dir '%s' glob '%s",
-                                  fulldirname, glob)
-                        dirs.remove(dirname)
-                        done_skip = True
 
             if done_skip:
                 log.debug("dirs now %s", dirs)

@@ -37,6 +37,21 @@ class HashlistOpTestCase(unittest.TestCase):
 
         self.assertFalse(_test_dir_exclude('notexcluded/exclude/'))
 
+    def test_dir_exclude_glob_simple_nullstate(self):
+        '''Hashlist glob exclusions, stateless mode'''
+        direx = []
+        direx_glob = ['excl*']
+
+        def _test_dir_exclude(fpath):
+            # This variant doesn't keep any state, useful for one-shot
+            # (e.g. during a walk where all subtrees can be excluded).
+            return is_dir_excluded(fpath, direx, direx_glob)
+
+        self.assertFalse(_test_dir_exclude('notexcluded/'))
+        self.assertTrue(_test_dir_exclude('exclude/'))
+
+        self.assertFalse(_test_dir_exclude('notexcluded/exclude/'))
+
     def test_dir_exclude_glob_sub(self):
         '''Hashlist glob exclusions in subdir'''
         direx = []
