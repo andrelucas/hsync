@@ -99,8 +99,6 @@ def hashlist_generate(srcpath, opts, source_mode=True,
             logging.debug("os.walk: root %s dirs %s files %s",
                           root, dirs, files)
 
-        dirs.sort()
-
         # See if the directory list can be pruned.
         if not opts.no_ignore_dirs:
             for dirname in dirs:
