@@ -129,4 +129,4 @@ def _read_hashlist(abs_hashfile, opt):
     else:
         strfile = hashfile_contents.splitlines()
 
-    existing_hl = hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
+    return hashlist_from_stringlist(strfile, opt, root=opt.source_dir)
