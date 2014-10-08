@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
-import grp
 import hashlib
 import logging
 import os.path
-import pwd
 import re
 from stat import *
-import sys
 
 from idmapper import *
 from exceptions import *

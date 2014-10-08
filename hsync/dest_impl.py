@@ -2,17 +2,15 @@
 
 from __future__ import print_function
 
-from fnmatch import fnmatch
 import gzip
 import logging
 import os
 import tempfile
-import urlparse
 
 from fetch import fetch_contents, fetch_needed, delete_not_needed
 from filehash import *
-from hashlist_op_impl import (hashlist_generate, sigfile_write,
-								 hashlist_from_stringlist, hashlist_check)
+from hashlist_op_impl import (sigfile_write, hashlist_from_stringlist,
+                              hashlist_check)
 from lockfile import LockFileManager
 from utility import cano_url
 

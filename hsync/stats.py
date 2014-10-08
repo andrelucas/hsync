@@ -1,6 +1,5 @@
 # Stats collection object
 
-from collections import namedtuple
 import logging
 
 log = logging.getLogger()

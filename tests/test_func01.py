@@ -11,7 +11,6 @@ import shutil
 import stat
 import cStringIO as StringIO
 import subprocess
-import sys
 import time
 import unittest
 import urllib2

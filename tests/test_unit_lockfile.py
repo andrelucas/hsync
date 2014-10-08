@@ -3,10 +3,8 @@
 from __future__ import print_function
 
 import inspect
-import logging
 import os
 import shutil
-from time import sleep
 import unittest
 
 from hsync.exceptions import NotADirectoryError

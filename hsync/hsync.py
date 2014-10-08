@@ -5,28 +5,18 @@
 
 from __future__ import print_function
 
-from BaseHTTPServer import BaseHTTPRequestHandler
-import fnmatch
-import grp
 import hashlib
 import logging
 import optparse
 import os.path
-import pwd
-from random import SystemRandom
-import re
 from stat import *
 import sys
-import tempfile
-import urllib2
 import urlparse
 
 from dest_impl import dest_side
 from exceptions import *
 from filehash import *
-from hashlist_op_impl import hashlist_generate
 from idmapper import *
-from lockfile import LockFileManager
 from source_impl import source_side
 from stats import StatsCollector
 

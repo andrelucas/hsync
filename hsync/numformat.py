@@ -3,9 +3,6 @@
 #
 
 import logging
-from math import floor
-import unittest
-
 
 log = logging.getLogger()
 
