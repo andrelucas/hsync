@@ -158,14 +158,14 @@ class FileHashCreateFromStringTestCase(unittest.TestCase):
         with self.assertRaises(UnsupportedFileTypeException):
             fstr = '0 020666 %s %s %s 0 /dev/zero' % \
                 (self.user, self.group, time.time())
-            fh = FileHash.init_from_string(fstr, root='/')
+            FileHash.init_from_string(fstr, root='/')
 
     def test_create_as_socket_fails(self):
         '''Init a socket from string form fails'''
         with self.assertRaises(UnsupportedFileTypeException):
             fstr = '0 140666 %s %s %s 0 /var/run/something.sock' % \
                 (self.user, self.group, time.time())
-            fh = FileHash.init_from_string(fstr, root='/')
+            FileHash.init_from_string(fstr, root='/')
 
 
 class FileHashCompareUnitTestCase(unittest.TestCase):
