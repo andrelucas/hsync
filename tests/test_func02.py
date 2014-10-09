@@ -7,7 +7,6 @@ from __future__ import print_function
 import inspect
 import logging
 import os
-import re
 import shutil
 from subprocess import *
 import sys
@@ -22,6 +21,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     me = inspect.getfile(inspect.currentframe())
     medir = os.path.dirname(me)
+    rundir = os.path.realpath(os.path.join(medir, '..'))
     topdir = os.path.join(medir, 'test')
     in_tmp = os.path.join(topdir, 'in_tmp')
     out_tmp = os.path.join(topdir, 'out_tmp')
@@ -30,6 +30,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
     zlib_extracted = os.path.join(topdir, 'zlib-1.2.8')
 
     def setUp(self):
+        os.chdir(self.rundir)
         for d in self.in_tmp, self.out_tmp:
             self._just_remove(d)
             os.makedirs(d)
@@ -111,6 +112,19 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         return (self.__get_debug(err, "check needed"),
                 self.__get_debug(err, "check not_needed"))
 
+    def _path_in_list(self, path, flist, dir=True):
+        # Assert that a path is found in the given filelist.
+        if dir:
+            if not path.endswith(os.sep):
+                path += os.sep
+
+        for fpath in flist:
+            if fpath.startswith(path):
+                log.debug("_path_in_list: '%s' matches '%s'", fpath, path)
+                return True
+
+        return False
+
     def test_e2e_simple1(self):
         '''Run a simple end-to-end'''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
@@ -129,3 +143,80 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         fetchfiles = [f[0] for f in needed]
         fetchfiles.sort()
         self.assertEquals(scanfiles, fetchfiles)
+
+    def test_e2e_exclude_dst1(self):
+        '''Run a transfer with dest -X, check the directory is excluded.'''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        full_scanlist = self._get_scan_debug(err)
+
+        full_scanfiles = [f[0] for f in full_scanlist]
+        full_scanfiles.sort()
+
+        # Run a scan excluding the watcom/ directory.
+        (out, err) = self._check_grab_hsync('-S %s -z -X watcom --scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        # Run hsync -D to fetch without watcom/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+
+        # Check we fetched the exact files we expected to fetch.
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        fetchfiles = [f[0] for f in needed]
+        fetchfiles.sort()
+
+        self.assertNotEquals(full_scanfiles, fetchfiles)
+        self.assertEquals(scanfiles, fetchfiles)
+
+    def test_e2e_exclude_src1(self):
+        '''Run a transfer with src -X, check the directory is excluded.'''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        full_scanlist = self._get_scan_debug(err)
+
+        full_scanfiles = [f[0] for f in full_scanlist]
+        full_scanfiles.sort()
+
+        # Run a scan excluding the watcom/ directory.
+        (out, err) = self._check_grab_hsync('-S %s -z -X watcom --scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        # Run hsync -D to fetch without watcom/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+
+        # Check we fetched the exact files we expected to fetch.
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        fetchfiles = [f[0] for f in needed]
+        fetchfiles.sort()
+
+        # Fetch should match the second scan (with -X)
+        self.assertNotEquals(full_scanfiles, fetchfiles)
+        self.assertEquals(scanfiles, fetchfiles)
+
+        # In the clean scan, watcom/ should be present.
+        self.assertTrue(self._path_in_list('watcom/', full_scanfiles))
+        # In the -X scan, watcom/ should be absent.
+        self.assertFalse(self._path_in_list('watcom/', scanfiles))
+
+
+
