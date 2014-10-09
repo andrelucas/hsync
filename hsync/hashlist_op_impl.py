@@ -121,8 +121,8 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
         if opts.exclude_dir:
             done_skip = False
-            copydirs = dirs[:]
-
+            copydirs = dirs[:]  # Don't iterate over a list we'll be changing
+                                # inside the loop.
             for dirname in copydirs:
                 fulldirname = os.path.join(relroot, dirname)
 
