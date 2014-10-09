@@ -187,6 +187,52 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         # In the -X scan, watcom/ should be absent.
         self.assertFalse(self._path_in_list('watcom/', scanfiles))
 
+    def test_e2e_exclude_dst2(self):
+        '''
+        Run a transfer with dest -X subdir, check the directory is excluded.
+        '''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a scan excluding the watcom/ directory.
+        (out, err) = self._check_grab_hsync('-S %s -z -X contrib/amd64 '
+                                            '--scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        # Now run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        full_scanlist = self._get_scan_debug(err)
+
+        full_scanfiles = [f[0] for f in full_scanlist]
+        full_scanfiles.sort()
+
+        # Run hsync -D to fetch without watcom/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -X contrib/amd64 -Z '
+                                            '--check-debug' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+
+        fetchfiles = [f[0] for f in needed]
+        fetchfiles.sort()
+
+        # Fetch should match the first scan (with -X), but not the full scan
+        # as watcom/ files should not be transferred.
+        self.assertNotEquals(full_scanfiles, fetchfiles)
+        self.assertEquals(scanfiles, fetchfiles)
+
+        # In the clean scan, contrib/amd64 should be present.
+        self.assertTrue(self._path_in_list('contrib/amd64', full_scanfiles))
+        # In the -X scan, contrib/amd64 should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64', scanfiles))
+        # In the fetch, contrib/amd64 should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64', fetchfiles))
+
     def test_e2e_exclude_src1(self):
         '''Run a transfer with src -X, check the directory is excluded.'''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
@@ -226,6 +272,54 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertTrue(self._path_in_list('watcom/', full_scanfiles))
         # In the -X scan, watcom/ should be absent.
         self.assertFalse(self._path_in_list('watcom/', scanfiles))
+        # In the fetch, watcom/ should be absent.
+        self.assertFalse(self._path_in_list('watcom/', fetchfiles))
+
+    def test_e2e_exclude_src2(self):
+        '''
+        Run a transfer with src -X subdir, check the directory is
+        excluded.
+        '''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        full_scanlist = self._get_scan_debug(err)
+
+        full_scanfiles = [f[0] for f in full_scanlist]
+        full_scanfiles.sort()
+
+        # Now run a new scan excluding the contrib/amd64/ directory.
+        (out, err) = self._check_grab_hsync('-S %s -z -X contrib/amd64 '
+                                            '--scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        # Run hsync -D to fetch without contrib/amd64/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+
+        # Check we fetched the exact files we expected to fetch.
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        fetchfiles = [f[0] for f in needed]
+        fetchfiles.sort()
+
+        # Fetch should match the second scan (with -X)
+        self.assertNotEquals(full_scanfiles, fetchfiles)
+        self.assertEquals(scanfiles, fetchfiles)
+
+        # In the clean scan, contrib/amd64 should be present.
+        self.assertTrue(self._path_in_list('contrib/amd64', full_scanfiles))
+        # In the -X scan, contrib/amd64 should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64', scanfiles))
+        # In the fetch, contrib/amd64 should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64', fetchfiles))
 
     def test_e2e_excludeglob_dst1(self):
         '''
@@ -360,6 +454,52 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertTrue(self._path_in_list('watcom/', full_scanfiles))
         # In the -X scan, watcom/ should be absent.
         self.assertFalse(self._path_in_list('watcom/', scanfiles))
+        # In the fetch, watcom/ should be absent.
+        self.assertFalse(self._path_in_list('watcom/', fetchfiles))
 
+    def test_e2e_excludeglob_src2(self):
+        '''
+        Run a transfer with src -X glob subdir, check the directory is
+        excluded.
+        '''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
 
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        full_scanlist = self._get_scan_debug(err)
+
+        full_scanfiles = [f[0] for f in full_scanlist]
+        full_scanfiles.sort()
+
+        # Run a scan excluding the contrib/amd64 directory.
+        (out, err) = self._check_grab_hsync('-S %s -z -X contrib/amd64 '
+                                            '--scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        # Run hsync -D to fetch without contrib/amd64.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+
+        # Check we fetched the exact files we expected to fetch.
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        fetchfiles = [f[0] for f in needed]
+        fetchfiles.sort()
+
+        # Fetch should match the second scan (with -X)
+        self.assertNotEquals(full_scanfiles, fetchfiles)
+        self.assertEquals(scanfiles, fetchfiles)
+
+        # In the clean scan, contrib/amd64/ should be present.
+        self.assertTrue(self._path_in_list('contrib/amd64/', full_scanfiles))
+        # In the -X scan, contrib/amd64/ should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64/', scanfiles))
+        # In the fetch, contrib/amd64/ should be absent.
+        self.assertFalse(self._path_in_list('contrib/amd64/', fetchfiles))
 
