@@ -107,7 +107,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
             shutil.copyfile(in_dir, in_tmp)
 
         subprocess.check_call(['find', in_tmp, '-name', '.gitignore',
-                              '-exec', 'rm', '{}', ';'])
+                               '-exec', 'rm', '{}', ';'])
         if out_dir is not None:
             shutil.copytree(os.path.join(self.topdir, out_dir), out_tmp,
                             symlinks=True)
@@ -329,7 +329,7 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.in_tmp, 'd1')),
                         "Not-excluded directory is in the source")
         self.assertTrue(os.path.exists(os.path.join(self.in_tmp,
-                        'd2_exclude')),
+                                                    'd2_exclude')),
                         "Excluded directory is in the source")
         self.assertTrue(os.path.exists(os.path.join(self.out_tmp, 'd1')),
                         "Not-excluded directory does not get copied")
