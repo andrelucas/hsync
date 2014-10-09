@@ -523,3 +523,8 @@ class FileHash(object):
                 self.size, self.mode,
                 self.mtime,
                 self.uid, self.gid, self.hashstr)
+
+    def _debug_repr(fh):
+        # Convenient debugging representation.
+        return ','.join([fh.fpath, '%06o' % fh.mode, str(fh.mtime),
+                         fh.user, fh.group, str(fh.size)])

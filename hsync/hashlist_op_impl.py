@@ -8,6 +8,7 @@ import logging
 import os
 from random import SystemRandom
 import re
+import sys
 
 from exceptions import *
 from filehash import *
@@ -203,8 +204,18 @@ def hashlist_generate(srcpath, opts, source_mode=True,
             assert fh.hashstr != fh.notsethash
             hashlist.append(fh)
 
+    if opts.scan_debug:
+        _scan_debug(hashlist)
+
     log.debug("hashlist_generate: entries %d", len(hashlist))
     return hashlist
+
+
+def _scan_debug(hashlist, outfile=sys.stderr):
+    print("XDEBUG BEGIN scan", file=outfile)
+    for fh in hashlist:
+        print(fh._debug_repr(), file=outfile)
+    print("XDEBUG END scan", file=outfile)
 
 
 def sigfile_write(hashlist, abs_path, opts,
@@ -412,4 +423,19 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
             log.debug("%s: not found in source", fpath)
             not_needed.append(fh)
 
+    if opts.check_debug:
+        _check_debug(needed, not_needed)
+
     return (needed, not_needed, dst_hashlist)
+
+
+def _check_debug(needed, not_needed, outfile=sys.stderr):
+    print("XDEBUG BEGIN check needed", file=outfile)
+    for fh in needed:
+        print(fh._debug_repr(), file=outfile)
+    print("XDEBUG END check needed", file=outfile)
+
+    print("XDEBUG BEGIN check not_needed", file=outfile)
+    for fh in not_needed:
+        print(fh._debug_repr(), file=outfile)
+    print("XDEBUG END check not_needed", file=outfile)

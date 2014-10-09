@@ -100,6 +100,11 @@ def getopts(cmdargs):
                     "[default: %default]")
     # This is used to pass stats around the app.
     meta.add_option("--stats", help=optparse.SUPPRESS_HELP)
+    # Debugging tools.
+    meta.add_option("--scan-debug", action="store_true",
+                    help=optparse.SUPPRESS_HELP)
+    meta.add_option("--check-debug", action="store_true",
+                    help=optparse.SUPPRESS_HELP)
 
     p.add_option_group(meta)
 
