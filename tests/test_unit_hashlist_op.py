@@ -104,7 +104,7 @@ class HashlistOpTestCase(unittest.TestCase):
         self.assertTrue(_test_file_exclude('exclude/gone'))
         self.assertFalse(_test_file_exclude('notexcluded/excluded/keep'))
 
-        excluded_dirs = set(['notexcluded/exclude/'])
+        excluded_dirs = set()
         is_dir_excluded('notexcluded/exclude', [], ['notexcluded/excl*'],
                         excluded_dirs)
 

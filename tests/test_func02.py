@@ -9,7 +9,6 @@ import logging
 import os
 import shutil
 from subprocess import *
-import sys
 import unittest
 
 from hsync._version import __version__
@@ -70,6 +69,10 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         (ret, out, err) = self._grab_hsync(opts)
         self.assertEquals(ret, 0)
         return (out, err)
+
+    def _dump_err(self, err):
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(err)
 
     def _unpack_tarball(self, dir, tarball):
         check_call('cd %s; tar xzf %s' % (dir, tarball),
@@ -330,7 +333,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
 
         # Run a scan excluding the watcom/ directory.
-        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug -X wat* '
                                             % zlibsrc)
         scanlist = self._get_scan_debug(err)
 
@@ -502,4 +505,3 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertFalse(self._path_in_list('contrib/amd64/', scanfiles))
         # In the fetch, contrib/amd64/ should be absent.
         self.assertFalse(self._path_in_list('contrib/amd64/', fetchfiles))
-

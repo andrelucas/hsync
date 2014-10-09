@@ -96,8 +96,8 @@ def hashlist_generate(srcpath, opts, source_mode=True,
         relroot = root[len(srcpath) + 1:]
 
         if log.isEnabledFor(logging.DEBUG):
-            logging.debug("os.walk: root %s dirs %s files %s",
-                          root, dirs, files)
+            log.debug("os.walk: root %s dirs %s files %s",
+                      root, dirs, files)
 
         # See if the directory list can be pruned.
         # XXX refactor.
@@ -121,15 +121,20 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
         if opts.exclude_dir:
             done_skip = False
+            to_exclude = []
 
             for dirname in dirs:
                 fulldirname = os.path.join(relroot, dirname)
 
                 if is_dir_excluded(fulldirname, excdirs, excdirs_glob):
-                    dirs.remove(dirname)
+                    log.debug("Exclude dir '%s' full path '%s'",
+                              dirname, fulldirname)
+                    to_exclude.append(dirname)
                     done_skip = True
 
             if done_skip:
+                for excdir in to_exclude:
+                    dirs.remove(excdir)
                 log.debug("dirs now %s", dirs)
 
         # Handle directories.
