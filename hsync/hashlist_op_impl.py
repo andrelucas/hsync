@@ -121,20 +121,18 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
         if opts.exclude_dir:
             done_skip = False
-            to_exclude = []
+            copydirs = dirs[:]
 
-            for dirname in dirs:
+            for dirname in copydirs:
                 fulldirname = os.path.join(relroot, dirname)
 
                 if is_dir_excluded(fulldirname, excdirs, excdirs_glob):
                     log.debug("Exclude dir '%s' full path '%s'",
                               dirname, fulldirname)
-                    to_exclude.append(dirname)
+                    dirs.remove(dirname)
                     done_skip = True
 
             if done_skip:
-                for excdir in to_exclude:
-                    dirs.remove(excdir)
                 log.debug("dirs now %s", dirs)
 
         # Handle directories.
