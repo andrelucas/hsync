@@ -414,7 +414,7 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
             else:
                 log.debug("Failed to fetch '%s'",
                           fh.fpath)
-                raise FetchContentsFailedException(
+                raise FetchContentsFailedError(
                     "Failed to fetch %s" % source_url)
 
         else:
