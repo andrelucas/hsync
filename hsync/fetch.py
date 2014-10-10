@@ -51,7 +51,10 @@ def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
     filecountstr = ''
     if file_count_number is not None:
         if file_count_total is not None:
-            pct = 100.0 * file_count_number / file_count_total
+            if file_count_total == 0:
+                pct = 100.0
+            else:
+                pct = 100.0 * file_count_number / file_count_total
             filecountstr = ' [object %d/%d (%.0f%%)]' % (
                 file_count_number,
                 file_count_total,
@@ -206,16 +209,6 @@ def fetch_needed(needed, source, opts):
     counters.differing_file_index = 0
     counters.signature_checkpoint = 0
 
-    for fh in needed:
-        if fh.dest_missing or fh.contents_differ:
-            counters.contents_differ_count += 1
-
-    # This is used to get current information into the destination
-    # hashlist. That way, current information is written to the client
-    # HSYNC.SIG, saving on re-scans.
-    changed = StatsCollector('ChangeStatus',
-                             ['contents', 'uidgid', 'mode', 'mtime'])
-
     included_dirs = set()
 
     if opts.include:
@@ -230,6 +223,25 @@ def fetch_needed(needed, source, opts):
     # These are used to debug the -I filter.
     i_fetched = []
     i_not_fetched = []
+
+    # Set up counters for the progress meter.
+    for fh in needed:
+        includeable = is_path_included(fh.fpath,
+                                       incset, incset_glob,
+                                       included_dirs,
+                                       is_dir=fh.is_dir)
+
+        if fh.dest_missing or fh.contents_differ:
+            if not opts.include or includeable:
+                if fh.is_file:
+                    counters.contents_differ_count += 1
+
+
+    # This is used to get current information into the destination
+    # hashlist. That way, current information is written to the client
+    # HSYNC.SIG, saving on re-scans.
+    changed = StatsCollector('ChangeStatus',
+                             ['contents', 'uidgid', 'mode', 'mtime'])
 
     for n, fh in enumerate(needed, start=1):
 

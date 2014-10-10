@@ -195,6 +195,7 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
     (fetch_added, fetch_err_count) = fetch_needed(needed, opt.source_url, opt)
 
     # Don't delete things if we had transfer problems. It's safer.
+    delete_status = True
     if not opt.no_delete and fetch_err_count == 0:
         delete_status = delete_not_needed(not_needed, opt.dest_dir, opt)
 
@@ -222,7 +223,10 @@ def _fetch_remote_impl(needed, not_needed, dst_hashlist, abs_hashfile, opt):
                 print("+ %s" % fh.fpath)
 
         if not_needed:
-            print("\nFiles removed:")
+            if opt.no_delete:
+                print("\nCandidates for removal (--no-delete is active):")
+            else:
+                print("\nObjects removed:")
             for fh in not_needed:
                 print("- %s" % fh.fpath)
 

@@ -103,6 +103,11 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
     # Use the is_dir to flag a directory, don't care about trailing slashes.
     fpath = fpath.rstrip(os.sep)
 
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("is_path_included: '%s' inclist %s inclist_glob %s "
+                  "is_dir %s included_dirs %s",
+                fpath, inclist, inclist_glob, is_dir, included_dirs)
+
     if fpath in inclist:
         log.debug("'%s': Include", fpath)
         include = True
