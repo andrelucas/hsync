@@ -19,6 +19,7 @@ from hsync.exceptions import *
 
 log = logging.getLogger()
 
+
 class HsyncArgsFuncTestCase(unittest.TestCase):
 
     def test_no_args_source_side(self):

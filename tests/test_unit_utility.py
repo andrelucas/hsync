@@ -88,7 +88,7 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
         # pass if notexcluded/exclude is a directory.
         self.assertFalse(_test_file_exclude('notexcluded/exclude'))
         self.assertTrue(_test_file_exclude('notexcluded/exclude',
-                        is_dir=True))
+                                           is_dir=True))
 
         excluded_dirs = set(['notexcluded/.exclude/'])
 
@@ -100,7 +100,7 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
         # pass if notexcluded/exclude is a directory.
         self.assertFalse(_test_file_exclude('notexcluded/.exclude'))
         self.assertTrue(_test_file_exclude('notexcluded/.exclude',
-                        is_dir=True))
+                                           is_dir=True))
 
     def test_path_pre_exclude_glob(self):
         '''Exclusion of files under excluded directories (glob)'''
@@ -127,7 +127,7 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
         # pass if notexcluded/exclude is a directory.
         self.assertFalse(_test_file_exclude('notexcluded/exclude'))
         self.assertTrue(_test_file_exclude('notexcluded/exclude',
-                        is_dir=True))
+                                           is_dir=True))
 
         excluded_dirs = set()
         is_dir_excluded('notexcluded/.exclude', ['nonsense1', 'nonsense2'],
@@ -141,7 +141,7 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
         # pass if notexcluded/exclude is a directory.
         self.assertFalse(_test_file_exclude('notexcluded/.exclude'))
         self.assertTrue(_test_file_exclude('notexcluded/.exclude',
-                        is_dir=True))
+                                           is_dir=True))
 
 
 class UtilityIncludeUnitTestCase(unittest.TestCase):
@@ -191,7 +191,3 @@ class UtilityIncludeUnitTestCase(unittest.TestCase):
 
         self.assertTrue(_test_include('include', is_dir=True))
         self.assertTrue(_test_include('include/alsoincluded'))
-
-
-
-
