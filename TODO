@@ -40,4 +40,3 @@ Features
 
 - Better tests
   - Unsupported file types (will currently just die)
-  - Test --no-delete mode
