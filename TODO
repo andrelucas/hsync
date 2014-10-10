@@ -5,8 +5,6 @@ Bugs
 
 - Documentation
 
-- Progress file counts are wrong
-
 - Explain filter for dest side in usage
 
 - Reduce memory consumption
@@ -15,11 +13,7 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- Test coverage of hsync.py isn't good enough.
-
 - Remove excluded dirs from the old .SIG file, as well as from the scan.
-
-- Lint pass.
 
 - Globs aren't very clever. Look at duplicity's '*' vs. '**'.
 
@@ -47,4 +41,3 @@ Features
 - Better tests
   - Unsupported file types (will currently just die)
   - Test --no-delete mode
-
