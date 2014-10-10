@@ -19,7 +19,7 @@ log = logging.getLogger()
 
 
 ##
-## Source-side.
+# Source-side.
 ##
 
 
@@ -31,13 +31,23 @@ def source_side(opt, args):
 
     Constructs the signature URL from the information in opt.
 
-    args is ignored.
+    args must be empty. We don't support extra args for source side, on the
+    dest side the args are a filter.
 
     Calls out to source_generate() to build the new HSYNC.SIG* file.
     '''
+
+    # We don't support extra arguments here.
+    if args:
+        raise UnexpectedArgumentsError(
+            "Path arguments are not supported in -S/--source-dir mode")
+
+    if opt.include:
+        raise UnsupportedModeError(
+            "-I/--include is not supported in -S/--source-dir mode")
+
     # If there's an existing hashfile, optionally use it to try to reduce the
     # amount of scanning.
-
     abs_hashfile = _generate_hashfile_url(opt)
 
     # Lock the source-side hash file.

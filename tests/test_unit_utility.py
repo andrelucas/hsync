@@ -3,7 +3,7 @@
 
 import unittest
 
-from hsync.utility import is_dir_excluded, is_path_pre_excluded
+from hsync.utility import *
 
 
 class UtilityExcludeDirUnitTestCase(unittest.TestCase):
@@ -142,3 +142,56 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
         self.assertFalse(_test_file_exclude('notexcluded/.exclude'))
         self.assertTrue(_test_file_exclude('notexcluded/.exclude',
                         is_dir=True))
+
+
+class UtilityIncludeUnitTestCase(unittest.TestCase):
+
+    def test_simple_include(self):
+        included_dirs = set()
+        inclist = ['include']
+        inclist_glob = []
+
+        def _test_include(fpath, is_dir=False):
+            return is_path_included(fpath, inclist, inclist_glob,
+                                    included_dirs, is_dir=is_dir)
+
+        self.assertFalse(_test_include('notincluded'))
+        self.assertTrue(_test_include('include'))
+
+        self.assertFalse(_test_include('notincluded/include/'))
+        # False because 'include' above wasn't marked as a directory.
+        # This is a bit of an implementation artefact rather than a
+        # desirable behaviour.
+        self.assertFalse(_test_include('include/alsoincluded'))
+
+        self.assertTrue(_test_include('include', is_dir=True))
+        # Should be True now as we've said 'include' is a directory.
+        self.assertTrue(_test_include('include/alsoincluded'))
+        # Test component termination.
+        self.assertFalse(_test_include('includex'))
+
+    def test_simple_include_glob(self):
+        included_dirs = set()
+        inclist = []
+        inclist_glob = ['inc*']
+
+        def _test_include(fpath, is_dir=False):
+            return is_path_included(fpath, inclist, inclist_glob,
+                                    included_dirs, is_dir=is_dir)
+
+        self.assertFalse(_test_include('notincluded'))
+        self.assertTrue(_test_include('include'))
+
+        self.assertFalse(_test_include('notincluded/include/'))
+        # True because fnmatch() makes it so - '*' translates to '.*' which
+        # gets past the '/'.
+        # XXX this isn't right - should really do better, I'm guessing this
+        # will involve an alternative to fnmatch. Another day.
+        self.assertTrue(_test_include('include/alsoincluded'))
+
+        self.assertTrue(_test_include('include', is_dir=True))
+        self.assertTrue(_test_include('include/alsoincluded'))
+
+
+
+

@@ -40,6 +40,12 @@ def getopts(cmdargs):
                     help="Specify the destination directory")
     recv.add_option("-u", "--source-url",
                     help="Specify the data source URL")
+    recv.add_option("-I", "--include", action="append",
+                    help="Specify a list of files to really transfer. This "
+                    "is applied after all other options and can be used to "
+                    "narrow the scope of a fetch to specific files or "
+                    "directories. Can also be specified as regular arguments "
+                    "after all other options")
     recv.add_option("--no-delete", action="store_true",
                     help="Never remove files from the destination, even if "
                     "they're not present on the source")

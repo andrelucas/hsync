@@ -19,6 +19,13 @@ from hsync.exceptions import *
 
 log = logging.getLogger()
 
+class HsyncArgsFuncTestCase(unittest.TestCase):
+
+    def test_no_args_source_side(self):
+        '''Fail with arguments for -S mode'''
+        with self.assertRaises(UnexpectedArgumentsError):
+            hsync.main(['-S', '/nonexistent', 'blah'])
+
 
 class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
 

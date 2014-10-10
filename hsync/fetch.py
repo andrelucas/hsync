@@ -6,6 +6,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 import hashlib
 import logging
 import os
+import re
 from random import SystemRandom
 import sys
 import urllib2
@@ -14,6 +15,7 @@ import urlparse
 from numformat import IECUnitConverter
 from stats import StatsCollector
 from exceptions import *
+from utility import is_path_included
 
 log = logging.getLogger()
 
@@ -214,7 +216,26 @@ def fetch_needed(needed, source, opts):
     changed = StatsCollector('ChangeStatus',
                              ['contents', 'uidgid', 'mode', 'mtime'])
 
+    included_dirs = set()
+
+    if opts.include:
+        log.debug("Includes: %s", opts.include)
+        re_globmatch = re.compile(r'[*?\[\]]')
+        incset = set([d for d in opts.include if not re_globmatch.search(d)])
+        incset_glob = set([d for d in opts.include if not d in incset])
+    else:
+        incset = set()
+        incset_glob = set()
+
     for n, fh in enumerate(needed, start=1):
+
+        if opts.include and not is_path_included(fh.fpath,
+                                                 incset, incset_glob,
+                                                 included_dirs,
+                                                 is_dir=fh.is_dir):
+            log.debug("Inclusion filter: '%s' is not included, skipping",
+                      fh.fpath)
+            continue
 
         changed.contents = False
         changed.uidgid = False
@@ -574,7 +595,7 @@ def _dir_fetch(fh, changed, opts):
         log.debug("Creating directory '%s'", tgt_dir)
         if not opts.quiet:
             print("D: %s" % fh.fpath)
-        os.mkdir(tgt_dir, fh.mode)
+        os.makedirs(tgt_dir, fh.mode)
         changed.contents = True
 
     # Dealing with a directory on the filesystem, not an fd - use the

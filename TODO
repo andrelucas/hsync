@@ -5,6 +5,8 @@ Bugs
 
 - Documentation
 
+- Explain filter for dest side in usage.
+
 - Reduce memory consumption
 
 - Relative filenames
@@ -17,6 +19,7 @@ Bugs
 
 - Lint pass.
 
+- Globs aren't very clever. Look at duplicity's '*' vs. '**'.
 
 Features
 
