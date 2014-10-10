@@ -227,6 +227,10 @@ def fetch_needed(needed, source, opts):
         incset = set()
         incset_glob = set()
 
+    # These are used to debug the -I filter.
+    i_fetched = []
+    i_not_fetched = []
+
     for n, fh in enumerate(needed, start=1):
 
         if opts.include and not is_path_included(fh.fpath,
@@ -235,7 +239,10 @@ def fetch_needed(needed, source, opts):
                                                  is_dir=fh.is_dir):
             log.debug("Inclusion filter: '%s' is not included, skipping",
                       fh.fpath)
+            i_not_fetched.append(fh)
             continue
+
+        i_fetched.append(fh)
 
         changed.contents = False
         changed.uidgid = False
@@ -286,7 +293,22 @@ def fetch_needed(needed, source, opts):
     else:
         log.warn("Fetch completed with %d errors", error_count)
 
+    if opts.fetch_debug:
+        _fetch_debug(i_fetched, i_not_fetched)
+
     return (fetch_added, error_count)
+
+
+def _fetch_debug(fetched, not_fetched, outfile=sys.stderr):
+    print("XDEBUG BEGIN fetch i_fetched", file=outfile)
+    for fh in fetched:
+        print(fh._debug_repr(), file=outfile)
+    print("XDEBUG END fetch i_fetched", file=outfile)
+
+    print("XDEBUG BEGIN fetch i_not_fetched", file=outfile)
+    for fh in not_fetched:
+        print(fh._debug_repr(), file=outfile)
+    print("XDEBUG END fetch i_not_fetched", file=outfile)
 
 
 def delete_not_needed(not_needed, target, opts):

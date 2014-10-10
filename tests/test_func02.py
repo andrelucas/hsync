@@ -505,3 +505,91 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertFalse(self._path_in_list('contrib/amd64/', scanfiles))
         # In the fetch, contrib/amd64/ should be absent.
         self.assertFalse(self._path_in_list('contrib/amd64/', fetchfiles))
+
+    def _get_fetch_debug(self, err):
+        return (self.__get_debug(err, "fetch i_fetched"),
+                self.__get_debug(err, "fetch i_not_fetched"))
+
+    def test_e2e_include_dst1(self):
+        '''
+        Run a transfer with dest -I, check that only the listed directory is
+        included.
+        '''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        # Run hsync -D to fetch without watcom/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z '
+                                            '--check-debug --fetch-debug'
+                                            ' -I watcom' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+        (i_fetched, i_not_fetched) = self._get_fetch_debug(err)
+
+        full_fetchfiles = [f[0] for f in needed]
+        full_fetchfiles.sort()
+
+        # Fetch should match the first scan (with -X), but not the full scan
+        # as watcom/ files should not be transferred.
+        self.assertEquals(scanfiles, full_fetchfiles)
+
+        # See what we actually fetched.
+        did_fetch = [f[0] for f in i_fetched]
+        did_not_fetch = [f[0] for f in i_not_fetched]
+
+        for f in did_fetch:
+            self.assertTrue(f.startswith('watcom'))
+
+        for f in did_not_fetch:
+            self.assertFalse(f.startswith('watcom'))
+
+    def test_e2e_include_glob_dst1(self):
+        '''
+        Run a transfer with dest -I glob, check that only the listed directory
+        is included.
+        '''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+
+        # Run hsync -D to fetch without watcom/.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z '
+                                            '--check-debug --fetch-debug'
+                                            ' -I wat*' %
+                                            (zlibdst, zlibsrc))
+        (needed, not_needed) = self._get_check_debug(err)
+        (i_fetched, i_not_fetched) = self._get_fetch_debug(err)
+
+        full_fetchfiles = [f[0] for f in needed]
+        full_fetchfiles.sort()
+
+        # Fetch should match the first scan (with -X), but not the full scan
+        # as watcom/ files should not be transferred.
+        self.assertEquals(scanfiles, full_fetchfiles)
+
+        # See what we actually fetched.
+        did_fetch = [f[0] for f in i_fetched]
+        did_not_fetch = [f[0] for f in i_not_fetched]
+
+        for f in did_fetch:
+            self.assertTrue(f.startswith('watcom'))
+
+        for f in did_not_fetch:
+            self.assertFalse(f.startswith('watcom'))

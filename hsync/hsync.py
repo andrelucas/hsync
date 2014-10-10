@@ -111,6 +111,8 @@ def getopts(cmdargs):
                     help=optparse.SUPPRESS_HELP)
     meta.add_option("--check-debug", action="store_true",
                     help=optparse.SUPPRESS_HELP)
+    meta.add_option("--fetch-debug", action="store_true",
+                    help=optparse.SUPPRESS_HELP)
 
     p.add_option_group(meta)
 
