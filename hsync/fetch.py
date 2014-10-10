@@ -72,7 +72,7 @@ def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
         else:
             progress_spacer = ''
 
-        print('\rF: %s%s%s' % (fname, progress_spacer, pfx), end='')
+        print('F: %s%s%s' % (fname, progress_spacer, pfx), end='')
 
     outfile = ''
 
