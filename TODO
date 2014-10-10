@@ -5,7 +5,9 @@ Bugs
 
 - Documentation
 
-- Explain filter for dest side in usage.
+- Progress file counts are wrong
+
+- Explain filter for dest side in usage
 
 - Reduce memory consumption
 
