@@ -506,6 +506,98 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         # In the fetch, contrib/amd64/ should be absent.
         self.assertFalse(self._path_in_list('contrib/amd64/', fetchfiles))
 
+    def test_e2e_nodelete1(self):
+        '''
+        Run a transfer and check it's ok.
+
+        Delete some stuff in the source, re-run the source side then the dest
+        side.
+
+        Check the files are not deleted in the dest with --no-delete active.
+
+        Re-run the dest side without --no-delete, check the files are gone.
+        '''
+
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        complete_scanlist = self._get_scan_debug(err)
+
+        complete_scanfiles = [f[0] for f in complete_scanlist]
+        complete_scanfiles.sort()
+
+        # Run hsync -D to fetch everything.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug' %
+                                            (zlibdst, zlibsrc))
+
+        (needed, not_needed) = self._get_check_debug(err)
+        complete_fetchfiles = [f[0] for f in needed]
+        complete_fetchfiles.sort()
+
+        # Simple e2e fetch should match.
+        self.assertEquals(complete_scanfiles, complete_fetchfiles)
+
+        # Get a list of the files we'll delete in the src.
+        srcdel = [f for f in complete_scanfiles if f.startswith('watcom')]
+
+        # Now delete some files.
+        shutil.rmtree(os.path.join(zlibsrc, 'watcom'))
+
+        # Run a full scan.
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                            % zlibsrc)
+        del_scanlist = self._get_scan_debug(err)
+
+        del_scanfiles = [f[0] for f in del_scanlist]
+        del_scanfiles.sort()
+
+        # Check something's changed.
+        self.assertNotEquals(complete_scanfiles, del_scanfiles)
+        self.assertTrue(self._path_in_list('watcom', complete_scanfiles))
+        self.assertFalse(self._path_in_list('watcom', del_scanfiles))
+
+        # Re-run -D in --no-delete mode - should stay the same.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug '
+                                            '--no-delete' %
+                                            (zlibdst, zlibsrc))
+
+        (needed, not_needed) = self._get_check_debug(err)
+        nodel_fetchfiles = [f[0] for f in needed]
+        nodel_fetchfiles.sort()
+        nodel_delfiles = [f[0] for f in not_needed]
+        nodel_delfiles.sort()
+
+        # not_needed will have the deletions...
+        self.assertNotEquals(nodel_delfiles, [])
+        self.assertTrue(self._path_in_list('watcom', nodel_delfiles))
+        # But all the files *must* still be there.
+        for f in srcdel:
+            self.assertTrue(os.path.exists(os.path.join(zlibdst, f)))
+
+        # Now re-run -D without --no-delete and check they're gone.
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z --check-debug ' %
+                                            (zlibdst, zlibsrc))
+
+        (needed, not_needed) = self._get_check_debug(err)
+        del_fetchfiles = [f[0] for f in needed]
+        del_fetchfiles.sort()
+        del_delfiles = [f[0] for f in not_needed]
+        del_delfiles.sort()
+
+        # Check we're in sync.
+        for f in srcdel:
+            self.assertTrue(f in del_delfiles)
+        for f in del_delfiles:
+            self.assertTrue(f in srcdel)
+
+        self.assertTrue(del_fetchfiles, [])
+        for f in srcdel:
+            self.assertFalse(os.path.exists(os.path.join(zlibdst, f)))
+
     def _get_fetch_debug(self, err):
         return (self.__get_debug(err, "fetch i_fetched"),
                 self.__get_debug(err, "fetch i_not_fetched"))
