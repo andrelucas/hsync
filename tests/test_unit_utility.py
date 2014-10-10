@@ -3,11 +3,10 @@
 
 import unittest
 
-from hsync.hashlist_op_impl import *
 from hsync.utility import is_dir_excluded, is_path_pre_excluded
 
 
-class HashlistOpTestCase(unittest.TestCase):
+class UtilityExcludeDirUnitTestCase(unittest.TestCase):
 
     def test_dir_exclude(self):
         '''Hashlist exclusions 101'''
@@ -103,7 +102,6 @@ class HashlistOpTestCase(unittest.TestCase):
         self.assertTrue(_test_file_exclude('notexcluded/.exclude',
                         is_dir=True))
 
-
     def test_path_pre_exclude_glob(self):
         '''Exclusion of files under excluded directories (glob)'''
         excluded_dirs = set()
@@ -133,7 +131,7 @@ class HashlistOpTestCase(unittest.TestCase):
 
         excluded_dirs = set()
         is_dir_excluded('notexcluded/.exclude', ['nonsense1', 'nonsense2'],
-                       ['nonsense1', '*/.exclude', 'nonsense2'],
+                        ['nonsense1', '*/.exclude', 'nonsense2'],
                         excluded_dirs)
         self.assertFalse(_test_file_exclude('notexcluded/.excl_nope'))
         self.assertFalse(_test_file_exclude('notexcluded/.excl_nope/exclude'))
