@@ -410,7 +410,7 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                   fh.fpath, fh.dest_missing, contents_differ)
 
         if not opts.quiet and sys.stdout.isatty():
-            print("F: %s" % fh.fpath, end='')
+            print("F: %s\r" % fh.fpath, end='')
 
         # Fetch_contents will display progress information itself.
         contents = fetch_contents(
