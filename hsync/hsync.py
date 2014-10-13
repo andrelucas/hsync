@@ -68,6 +68,10 @@ def getopts(cmdargs):
                     "[default: %default]")
     recv.add_option("--proxy-url",
                     help="Specify the proxy URL to use")
+    recv.add_option("--proxy-user",
+                    help="Specify the proxy authentication username")
+    recv.add_option("--proxy-pass",
+                    help="Specify the proxy authentication password")
     p.add_option_group(recv)
 
     recv.add_option("-U", "--signature-url",

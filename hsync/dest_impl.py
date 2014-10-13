@@ -18,6 +18,16 @@ from utility import cano_url
 log = logging.getLogger()
 
 
+class BadAuthSpecificationError(Exception):
+
+    pass
+
+
+class BadProxySpecificationError(Exception):
+
+    pass
+
+
 ##
 # Dest-side.
 ##
@@ -50,12 +60,28 @@ def dest_side(opt, args):
         log.warn("In -I/--include mode, option --no-delete is always on")
         opt.no_delete = True
 
-    _configure_http_auth(opt)
+    # Assemble the chain of urllib2 openers that we need to do potentially
+    # more than one type of auth.
 
+    auth_handler = _configure_http_auth(opt)
+
+    proxy_handlers = None
     if opt.proxy_url:
         log.debug("Configuring proxy")
-        raise Exception("Explicit proxy not yet implemented, use "
-                        "environment variables")
+        proxy_handlers = _configure_http_proxy(opt)
+
+    handlers = []
+    if proxy_handlers is not None:
+        handlers.extend(list(proxy_handlers))
+    if auth_handler is not None:
+        handlers.append(auth_handler)
+
+    if handlers:
+        log.debug("Building opener: Handlers %s", handlers)
+        opener = urllib2.build_opener(*handlers)
+
+        log.debug("Installing urllib2 opener: %s", opener)
+        urllib2.install_opener(opener)
 
     (hashurl, shortname, compressed_sig) = _configure_hashurl(opt)
 
@@ -248,28 +274,60 @@ def _configure_http_auth(opt):
 
     if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
         log.error("HTTP auth type must be one of 'digest' or 'basic'")
-        return False
+        raise BadAuthSpecificationError(
+            "Bad authentication type '%s'", opt.http_auth_type)
 
     if opt.http_user:
         log.debug("Configuring HTTP authentication")
         if not opt.http_pass:
-            log.error("HTTP proxy password must be specified")
+            log.error("HTTP password must be specified when the username "
+                      "is supplied")
+            raise BadAuthSpecificationError(
+                "No password given for user '%s'" % opt.http_user)
 
         pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
         pwmgr.add_password(None, opt.source_url,
                            opt.http_user, opt.http_pass)
-        auth_opener = None
+
         if opt.http_auth_type == 'digest':
             log.debug("Configuring digest authentication")
-            auth_opener = urllib2.build_opener(
-                urllib2.DigestAuthHandler(pwmgr))
+            return urllib2.DigestAuthHandler(pwmgr)
 
         else:
             log.debug("Configuring basic authentication")
-            auth_opener = urllib2.build_opener(
-                urllib2.HTTPBasicAuthHandler(pwmgr))
+            return urllib2.HTTPBasicAuthHandler(pwmgr)
 
-        urllib2.install_opener(auth_opener)
+
+def _configure_http_proxy(opt):
+    '''
+    Configure an HTTP proxy. Return a list of handlers to be given to
+    urllib2.build_opener().
+
+    '''
+
+    schemes = {}
+    for scheme in ('ftp', 'http', 'https'):
+        schemes[scheme] = opt.proxy_url
+
+    log.debug("Installing handlers: %s", schemes)
+    proxy_handler = urllib2.ProxyHandler(schemes)
+
+    if opt.proxy_user and opt.proxy_pass:
+        log.debug("Configuring HTTP proxy authentication")
+        if not opt.proxy_pass:
+            log.error("HTTP proxy password ")
+            raise BadProxySpecificationError(
+                "No password given for proxy user '%s'" % opt.proxy_user)
+
+        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        pwmgr.add_password(None, opt.proxy_url,
+                           opt.proxy_user, opt.proxy_pass)
+
+        proxy_auth_handler = urllib2.ProxyBasicAuthHandler(pwmgr)
+        return (proxy_handler, proxy_auth_handler)
+
+    else:
+        return (proxy_handler,)
 
 
 def _configure_hashurl(opt):
