@@ -147,6 +147,7 @@ class UtilityExcludeDirUnitTestCase(unittest.TestCase):
 class UtilityIncludeUnitTestCase(unittest.TestCase):
 
     def test_simple_include(self):
+        '''Basic include matching'''
         included_dirs = set()
         inclist = ['include']
         inclist_glob = []
@@ -171,6 +172,7 @@ class UtilityIncludeUnitTestCase(unittest.TestCase):
         self.assertFalse(_test_include('includex'))
 
     def test_simple_include_glob(self):
+        '''Basic include globbing'''
         included_dirs = set()
         inclist = []
         inclist_glob = ['inc*']
