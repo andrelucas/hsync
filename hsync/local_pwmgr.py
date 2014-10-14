@@ -22,7 +22,7 @@ class InstrumentedHTTPPassManager(urllib2.HTTPPasswordMgrWithDefaultRealm,
         log.debug("InstrumentedHTTPPassManager:__init__()")
 
     def add_password(self, realm, uri, user, password):
-        log.debug("InstrumentedHTTPPassManager: add_password(): g"
+        log.debug("InstrumentedHTTPPassManager: add_password(): "
                   "realm '%s' uri '%s' user '%s' password '%s'",
                   realm, uri, user, password)
         super(InstrumentedHTTPPassManager, self).add_password(
