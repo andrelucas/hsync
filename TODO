@@ -11,6 +11,8 @@ Bugs
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
+- Proxy auth doesn't work (don't think this is me, I think it's urllib2)
+
 Features
 
 - Add metadata to the HSYNC.SIG* file, in top-comments.
