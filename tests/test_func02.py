@@ -10,7 +10,7 @@ import os
 import re
 import shutil
 from subprocess import *
-import sys
+#import sys
 import unittest
 
 from hsync._version import __version__
@@ -174,7 +174,8 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         #print("err: %s" % err, file=sys.stderr)
         (fetched, not_fetched) = self._get_fetch_debug(err)
 
-        re_errcheck = re.compile(r"Failed to retrieve '[^']+/%s'" % nerfed_file)
+        re_errcheck = re.compile(
+            r"Failed to retrieve '[^']+/%s'" % nerfed_file)
         self.assertIsNotNone(re_errcheck.search(err, re.MULTILINE))
 
         # Check we tried to fetch the exact files we expected to fetch.
