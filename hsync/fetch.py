@@ -87,9 +87,10 @@ def fetch_contents(fpath, opts, root='', no_trim=False, for_filehash=None,
         if e.code == 404:
             resp = BaseHTTPRequestHandler.responses
             log.warn("Failed to retrieve '%s': %s", fullpath, resp[404][0])
-            return None
-        else:
-            raise(e)
+        return None
+    except urllib2.URLError as e:
+        log.warn("Failed to retrieve '%s': %s", fullpath, e)
+        return None
 
     size = 0
     size_is_known = False
@@ -174,7 +175,11 @@ class FetchException(Exception):
     pass
 
 
-class FetchFailedChecksumException(Exception):
+class FetchContentsFailedException(FetchException):
+    pass
+
+
+class FetchFailedChecksumException(FetchException):
     pass
 
 
@@ -236,7 +241,6 @@ def fetch_needed(needed, source, opts):
                 if fh.is_file:
                     counters.contents_differ_count += 1
 
-
     # This is used to get current information into the destination
     # hashlist. That way, current information is written to the client
     # HSYNC.SIG, saving on re-scans.
@@ -254,8 +258,6 @@ def fetch_needed(needed, source, opts):
             i_not_fetched.append(fh)
             continue
 
-        i_fetched.append(fh)
-
         changed.contents = False
         changed.uidgid = False
         changed.mode = False
@@ -269,9 +271,12 @@ def fetch_needed(needed, source, opts):
 
         source_url = urlparse.urljoin(source, fh.fpath)
 
+        success = False
+
         if fh.is_file:
             try:
                 _file_fetch(fh, source_url, changed, counters, r, opts)
+                success = True
 
             except FetchException as e:
                 log.warn("Fetch file %s failed: %s", source_url, e)
@@ -280,6 +285,8 @@ def fetch_needed(needed, source, opts):
         elif fh.is_link:
             try:
                 _link_fetch(fh, changed, opts)
+                success = True
+
             except FetchException as e:
                 log.warn("Update link %s failed: %s", fh.fpath, e)
                 error_count += 1
@@ -287,13 +294,19 @@ def fetch_needed(needed, source, opts):
         elif fh.is_dir:
             try:
                 _dir_fetch(fh, changed, opts)
+                success = True
+
             except FetchException as e:
                 log.warn("Update dir %s failed: %s", fh.fpath, e)
                 error_count += 1
 
         # Update the client-side HSYNC.SIG data.
-        log.debug("Updating dest hash for '%s'", fh.fpath)
-        update_dest_filehash(fh, changed, fetch_added)
+        if success:
+            i_fetched.append(fh)
+            log.debug("Updating dest hash for '%s'", fh.fpath)
+            update_dest_filehash(fh, changed, fetch_added)
+        else:
+            i_not_fetched.append(fh)
 
     log.debug("fetch_needed(): done")
 
@@ -426,7 +439,7 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
             else:
                 log.debug("Failed to fetch '%s'",
                           fh.fpath)
-                raise FetchContentsFailedError(
+                raise FetchContentsFailedException(
                     "Failed to fetch %s" % source_url)
 
         else:

@@ -7,8 +7,10 @@ from __future__ import print_function
 import inspect
 import logging
 import os
+import re
 import shutil
 from subprocess import *
+import sys
 import unittest
 
 from hsync._version import __version__
@@ -65,9 +67,9 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertIsNotNone(p.returncode)
         return (p.returncode, out, err)
 
-    def _check_grab_hsync(self, opts):
+    def _check_grab_hsync(self, opts, expected_ret=0):
         (ret, out, err) = self._grab_hsync(opts)
-        self.assertEquals(ret, 0)
+        self.assertEquals(ret, expected_ret)
         return (out, err)
 
     def _dump_err(self, err):
@@ -115,6 +117,10 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         return (self.__get_debug(err, "check needed"),
                 self.__get_debug(err, "check not_needed"))
 
+    def _get_fetch_debug(self, err):
+        return (self.__get_debug(err, "fetch i_fetched"),
+                self.__get_debug(err, "fetch i_not_fetched"))
+
     def _path_in_list(self, path, flist, dir=True):
         # Assert that a path is found in the given filelist.
         if dir:
@@ -129,7 +135,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         return False
 
     def test_e2e_simple1(self):
-        '''Run a simple end-to-end'''
+        '''Run a simple end-to-end transfer'''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
         zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
@@ -143,9 +149,51 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         # Check we fetched the exact files we expected to fetch.
         scanfiles = [f[0] for f in scanlist]
         scanfiles.sort()
-        fetchfiles = [f[0] for f in needed]
+
+        checkfiles = [f[0] for f in needed]
+        checkfiles.sort()
+        self.assertEquals(scanfiles, checkfiles)
+
+    def test_e2e_contents_error_continue(self):
+        '''Check we get meaningful errors'''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+        zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
+        (out, err) = self._check_grab_hsync('-S %s -z --scan-debug' % zlibsrc)
+        scanlist = self._get_scan_debug(err)
+
+        # Deliberately make the contents fetch fail.
+        nerfed_file = 'README'
+        os.unlink(os.path.join(zlibsrc, nerfed_file))
+
+        (out, err) = self._check_grab_hsync('-D %s -u %s -Z '
+                                            '--check-debug --fetch-debug' %
+                                            (zlibdst, zlibsrc),
+                                            expected_ret=1)
+        (needed, not_needed) = self._get_check_debug(err)
+        #print("err: %s" % err, file=sys.stderr)
+        (fetched, not_fetched) = self._get_fetch_debug(err)
+
+        re_errcheck = re.compile(r"Failed to retrieve '[^']+/%s'" % nerfed_file)
+        self.assertIsNotNone(re_errcheck.search(err, re.MULTILINE))
+
+        # Check we tried to fetch the exact files we expected to fetch.
+        scanfiles = [f[0] for f in scanlist]
+        scanfiles.sort()
+        checkfiles = [f[0] for f in needed]
+        checkfiles.sort()
+        self.assertEquals(scanfiles, checkfiles)
+
+        # Check we actually fetched the files we expected - we'll fail to
+        # fetch the nerfed file, check that's true.
+        fetchfiles = [f[0] for f in fetched]
         fetchfiles.sort()
-        self.assertEquals(scanfiles, fetchfiles)
+        self.assertNotEquals(scanfiles, fetchfiles)
+        scanfiles_sans_nerf = [f for f in scanfiles if f != nerfed_file]
+        self.assertEquals(scanfiles_sans_nerf, fetchfiles)
+        notfetchfiles = [f[0] for f in not_fetched]
+        notfetchfiles.sort()
+        self.assertEquals(notfetchfiles, [nerfed_file])
 
     def test_e2e_exclude_dst1(self):
         '''
