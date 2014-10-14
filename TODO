@@ -5,19 +5,17 @@ Bugs
 
 - Documentation
 
-- Explain filter for dest side in usage
-
 - Reduce memory consumption
 
 - Relative filenames
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
 
-- Remove excluded dirs from the old .SIG file, as well as from the scan.
-
-- Globs aren't very clever. Look at duplicity's '*' vs. '**'.
+- Proxy auth doesn't work (don't think this is me, I think it's urllib2)
 
 Features
+
+- Add metadata to the HSYNC.SIG* file, in top-comments.
 
 - Add a built-in way to remove an old lockfile
 
@@ -26,17 +24,10 @@ Features
 - Transfer statistics
   - They're kept, so surface them.
 
-- Retry failed downloads?
-
 - Write in-progress downloads to disk instead of memory, like rsync
-
-- Wildcard exclude
-
-- Specific include as well as exclude
 
 - Truncate long paths (for display)
 
 - Check the HSYNC.SIG FINAL checksum
 
-- Better tests
-  - Unsupported file types (will currently just die)
+- Globs aren't very clever. Look at duplicity's '*' vs. '**'.
