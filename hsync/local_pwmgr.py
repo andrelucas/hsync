@@ -28,11 +28,11 @@ class InstrumentedHTTPPassManager(urllib2.HTTPPasswordMgrWithDefaultRealm,
         super(InstrumentedHTTPPassManager, self).add_password(
             realm, uri, user, password)
 
-    def find_password(self, realm, authuri):
+    def find_user_password(self, realm, authuri):
         (user, password) = \
-            super(InstrumentedHTTPPassManager, self).find_password(
+            super(InstrumentedHTTPPassManager, self).find_user_password(
                 realm, authuri)
         log.debug("Instrumented)HTTPPassManager: "
-                  "(%s, %s) = find_password('%s', '%s')",
+                  "(%s, %s) = find_user_password('%s', '%s')",
                   user, password, realm, authuri)
         return (user, password)
