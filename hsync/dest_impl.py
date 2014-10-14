@@ -277,7 +277,7 @@ def _configure_http_auth(opt):
     if opt.http_auth_type != 'digest' and opt.http_auth_type != 'basic':
         log.error("HTTP auth type must be one of 'digest' or 'basic'")
         raise BadAuthSpecificationError(
-            "Bad authentication type '%s'", opt.http_auth_type)
+            "Bad authentication type '%s'" % (opt.http_auth_type))
 
     if opt.http_user:
         log.debug("Configuring HTTP authentication")

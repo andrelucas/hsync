@@ -244,7 +244,8 @@ class FileHash(object):
     def read_file_contents(self):
 
         if not self.is_file:
-            raise
+            raise UnsupportedFileTypeException(
+                "%s: Attempt to read contents of non-file" % self.fullpath)
 
         log.debug("Reading file '%s' contents", self.fullpath)
         self.hash_file()
@@ -433,7 +434,7 @@ class FileHash(object):
         relative, and mark links that point outside the tree as external.
         '''
         if not S_ISLNK(self.mode):
-            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
+            raise LinkOperationOnNonLinkError("'%s' is not a symlink" %
                                               self.fpath)
         log.debug("normalise_symlink: %s", repr(self))
 
@@ -466,10 +467,10 @@ class FileHash(object):
 
         if not srcdir.startswith(os.sep):
             raise PathMustBeAbsoluteError(
-                "'%s' must be an absolute path", srcdir)
+                "'%s' must be an absolute path" % srcdir)
 
         if not S_ISLNK(self.mode):
-            raise LinkOperationOnNonLinkError("'%s' is not a symlink",
+            raise LinkOperationOnNonLinkError("'%s' is not a symlink" %
                                               self.fpath)
         log.debug("source_symlink_make_relative: %s, %s",
                   self.fpath, self.link_target)
@@ -501,8 +502,8 @@ class FileHash(object):
                 raise SymlinkPointsOutsideTreeError(
                     "'%s' points outside the file tree "
                     "('%s', normalised to '%s') "
-                    "and absolute links are disabled",
-                    self.fpath, self.link_target, norm_tpath_full)
+                    "and absolute links are disabled" %
+                    (self.fpath, self.link_target, norm_tpath_full))
 
             # We're not under the source path -> absolute link.
             log.debug("link cannot be made relative : '%s' -> '%s'",

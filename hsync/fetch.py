@@ -469,10 +469,10 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                 if os.path.islink(tgt_file):
                     raise ParanoiaError(
                         "Not overwriting existing symlink '%s' with "
-                        "file", tgt_file)
+                        "file" % tgt_file)
                 if os.path.isdir(tgt_file):
                     raise DirWhereFileExpectedError(
-                        "Directory found where file expected at '%s'",
+                        "Directory found where file expected at '%s'" %
                         tgt_file)
 
             # Dealing with file descriptors, use os.f*() variants.
@@ -480,7 +480,7 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                           os.O_CREAT | os.O_EXCL | os.O_WRONLY,
                           fh.mode)
             if tgt == -1:
-                raise OSOperationFailedError("Failed to open '%s'",
+                raise OSOperationFailedError("Failed to open '%s'" %
                                              tgt_file_rnd)
 
             expect_uid = fh.uid
@@ -505,8 +505,8 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                       tgt_file_rnd, tgt_file)
             if os.rename(tgt_file_rnd, tgt_file) == -1:
                 raise OSOperationFailedError(
-                    "Failed to rename '%s' to '%s'",
-                    tgt_file_rnd, tgt_file)
+                    "Failed to rename '%s' to '%s'" %
+                    (tgt_file_rnd, tgt_file))
 
             changed.mtime = True
             os.utime(tgt_file, (fh.mtime, fh.mtime))
@@ -592,7 +592,7 @@ def _link_fetch(fh, changed, opts):
         log.debug("Path '%s' exists in the filesystem", linkpath)
         if not os.path.islink(linkpath):
             raise NonLinkFoundAtLinkLocationError(
-                "Non-symlink found where we want a symlink ('%s')",
+                "Non-symlink found where we want a symlink ('%s')" %
                 linkpath)
 
         else:
@@ -636,7 +636,7 @@ def _dir_fetch(fh, changed, opts):
         log.debug("Path '%s' exists in the filesystem", tgt_dir)
         if not os.path.isdir(tgt_dir):
             raise NonDirFoundAtDirLocationError(
-                "Non-directory found where directory expected ('%s')",
+                "Non-directory found where directory expected ('%s')" %
                 tgt_dir)
     else:
         log.debug("Creating directory '%s'", tgt_dir)
