@@ -7,11 +7,13 @@ import logging
 import os
 import tempfile
 import urllib2
+import urlparse
 
 from fetch import fetch_contents, fetch_needed, delete_not_needed
 from filehash import *
 from hashlist_op_impl import (sigfile_write, hashlist_from_stringlist,
                               hashlist_check)
+from local_pwmgr import InstrumentedHTTPPassManager
 from lockfile import LockFileManager
 from utility import cano_url
 
@@ -309,7 +311,8 @@ def _configure_http_proxy(opt):
     for scheme in ('ftp', 'http', 'https'):
         schemes[scheme] = opt.proxy_url
 
-    (host, _rest) = urllib2.splithost(opt.source_url)
+    host = urlparse.urlsplit(opt.source_url)[1]
+    log.debug("Using '%s' as URI host for '%s'", host, opt.source_url)
 
     log.debug("Installing handlers: %s", schemes)
     proxy_handler = urllib2.ProxyHandler(schemes)
@@ -321,7 +324,7 @@ def _configure_http_proxy(opt):
             raise BadProxySpecificationError(
                 "No password given for proxy user '%s'" % opt.proxy_user)
 
-        pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        pwmgr = InstrumentedHTTPPassManager()
         pwmgr.add_password(None, host, opt.proxy_user, opt.proxy_pass)
 
         proxy_auth_handler = urllib2.ProxyBasicAuthHandler(pwmgr)
