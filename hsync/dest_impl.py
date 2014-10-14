@@ -309,6 +309,8 @@ def _configure_http_proxy(opt):
     for scheme in ('ftp', 'http', 'https'):
         schemes[scheme] = opt.proxy_url
 
+    (host, _rest) = urllib2.splithost(opt.source_url)
+
     log.debug("Installing handlers: %s", schemes)
     proxy_handler = urllib2.ProxyHandler(schemes)
 
@@ -320,8 +322,7 @@ def _configure_http_proxy(opt):
                 "No password given for proxy user '%s'" % opt.proxy_user)
 
         pwmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        pwmgr.add_password(None, opt.proxy_url,
-                           opt.proxy_user, opt.proxy_pass)
+        pwmgr.add_password(None, host, opt.proxy_user, opt.proxy_pass)
 
         proxy_auth_handler = urllib2.ProxyBasicAuthHandler(pwmgr)
         return (proxy_handler, proxy_auth_handler)
