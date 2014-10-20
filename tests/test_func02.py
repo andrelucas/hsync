@@ -734,3 +734,39 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
         for f in did_not_fetch:
             self.assertFalse(f.startswith('watcom'))
+
+    def test_e2e_implicit_exclude_src1(self):
+        '''Check implicitly-excluded dirs'''
+        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+
+        for xdir in ('.git', '.svn', 'CVS'):
+            log.debug("Testing --no-ignore-dirs for '%s'", xdir)
+            xdirsrc = os.path.join(zlibsrc, xdir)
+            os.makedirs(xdirsrc)
+
+            # Run a full scan.
+            (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+                                                % zlibsrc)
+            dflt_scanlist = self._get_scan_debug(err)
+
+            dflt_scanfiles = [f[0] for f in dflt_scanlist]
+            dflt_scanfiles.sort()
+
+            # Now run a new scan excluding the watcom/ directory.
+            (out, err) = self._check_grab_hsync('-S %s -z --no-ignore-dirs '
+                                                '--scan-debug'
+                                                % zlibsrc)
+            noex_scanlist = self._get_scan_debug(err)
+
+            # Check we scanned the right files.
+            dflt_scanfiles = [f[0] for f in dflt_scanlist]
+            dflt_scanfiles.sort()
+
+            noex_scanfiles = [f[0] for f in noex_scanlist]
+            noex_scanfiles.sort()
+
+            # In the clean scan, the xdir should be absent.
+            self.assertFalse(self._path_in_list(xdir, dflt_scanfiles))
+            # In the --no-ignore-files scan, the xdir should be present.
+            self.assertTrue(self._path_in_list(xdir, noex_scanfiles))
