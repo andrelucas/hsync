@@ -121,12 +121,8 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         return (self.__get_debug(err, "fetch i_fetched"),
                 self.__get_debug(err, "fetch i_not_fetched"))
 
-    def _path_in_list(self, path, flist, dir=True):
+    def _path_in_list(self, path, flist):
         # Assert that a path is found in the given filelist.
-        if dir:
-            if not path.endswith(os.sep):
-                path += os.sep
-
         for fpath in flist:
             if fpath.startswith(path):
                 log.debug("_path_in_list: '%s' matches '%s'", fpath, path)
@@ -735,18 +731,25 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         for f in did_not_fetch:
             self.assertFalse(f.startswith('watcom'))
 
-    def test_e2e_implicit_exclude_src1(self):
+    def test_e2e_implicit_ignore_dirs_src1(self):
         '''Check implicitly-excluded dirs'''
-        self._unpack_tarball(self.in_tmp, self.zlib_tarball)
-        zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
 
-        for xdir in ('.git', '.svn', 'CVS'):
+        for xdir in ('.git', '.svn', 'CVS',
+                     'd/.git', 'd/.svn', 'd/CVS'):
             log.debug("Testing --no-ignore-dirs for '%s'", xdir)
+
+            self._just_remove(self.in_tmp)
+            os.makedirs(self.in_tmp)
+            self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+            zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+
+            # Makedirs will make any parent directories for us.
             xdirsrc = os.path.join(zlibsrc, xdir)
             os.makedirs(xdirsrc)
+            self.assertTrue(os.path.isdir(xdirsrc))
 
             # Run a full scan.
-            (out, err) = self._check_grab_hsync('-S %s -z --scan-debug'
+            (out, err) = self._check_grab_hsync('-S %s -z --scan-debug -d'
                                                 % zlibsrc)
             dflt_scanlist = self._get_scan_debug(err)
 
@@ -755,7 +758,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
             # Now run a new scan excluding the watcom/ directory.
             (out, err) = self._check_grab_hsync('-S %s -z --no-ignore-dirs '
-                                                '--scan-debug'
+                                                '--scan-debug -d'
                                                 % zlibsrc)
             noex_scanlist = self._get_scan_debug(err)
 
@@ -770,3 +773,54 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
             self.assertFalse(self._path_in_list(xdir, dflt_scanfiles))
             # In the --no-ignore-files scan, the xdir should be present.
             self.assertTrue(self._path_in_list(xdir, noex_scanfiles))
+
+    def test_e2e_implicit_ignore_files_src1(self):
+        '''Check implicitly-excluded files'''
+
+        for xfile in ('test.swp', 'test~', '.nfs00deadbeef',
+                      'd/test.swp', 'd/test~', 'd/.nfs00deadbeef'):
+            log.debug("Testing --no-ignore-files for '%s'", xfile)
+
+            self._just_remove(self.in_tmp)
+            os.makedirs(self.in_tmp)
+            self._unpack_tarball(self.in_tmp, self.zlib_tarball)
+            zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
+
+            xfilesrc = os.path.join(zlibsrc, xfile)
+            if os.path.dirname(xfilesrc) != zlibsrc:
+                xfiledir = os.path.join(zlibsrc, os.path.dirname(xfile))
+                os.makedirs(xfiledir)
+
+            with open(xfilesrc, 'w') as f:
+                print('hello', file=f)
+
+            self.assertTrue(os.path.isfile(xfilesrc))
+
+            # Run a full scan.
+            (out, err) = self._check_grab_hsync('-S %s -z --scan-debug -d'
+                                                % zlibsrc)
+            dflt_scanlist = self._get_scan_debug(err)
+
+            dflt_scanfiles = [f[0] for f in dflt_scanlist]
+            dflt_scanfiles.sort()
+
+            # Now run a new scan excluding the watcom/ directory.
+            (out, err) = self._check_grab_hsync('-S %s -z --no-ignore-files '
+                                                '--scan-debug -d'
+                                                % zlibsrc)
+            noex_scanlist = self._get_scan_debug(err)
+
+            # Check we scanned the right files.
+            dflt_scanfiles = [f[0] for f in dflt_scanlist]
+            dflt_scanfiles.sort()
+
+            noex_scanfiles = [f[0] for f in noex_scanlist]
+            noex_scanfiles.sort()
+
+            # In the clean scan, the xdir should be absent.
+            self.assertFalse(self._path_in_list(xfile, dflt_scanfiles),
+                             "'%s' should be absent by default" % xfile)
+            # In the --no-ignore-files scan, the xdir should be present.
+            self.assertTrue(self._path_in_list(xfile, noex_scanfiles),
+                            "'%s' should be present with --no-ignore-files" %
+                            xfile)
