@@ -12,8 +12,6 @@ from exceptions import *
 log = logging.getLogger()
 
 
-
-
 class NotHashableException(Exception):
     pass
 
