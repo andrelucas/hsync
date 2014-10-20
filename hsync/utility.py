@@ -3,7 +3,6 @@
 import fnmatch
 import logging
 import os
-import re
 import urlparse
 
 log = logging.getLogger()
@@ -106,7 +105,7 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
     if log.isEnabledFor(logging.DEBUG):
         log.debug("is_path_included: '%s' inclist %s inclist_glob %s "
                   "is_dir %s included_dirs %s",
-                fpath, inclist, inclist_glob, is_dir, included_dirs)
+                  fpath, inclist, inclist_glob, is_dir, included_dirs)
 
     if fpath in inclist:
         log.debug("'%s': Include", fpath)
@@ -130,6 +129,5 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
                 if is_dir:
                     included_dirs.add(fpath + os.sep)
                     log.debug("Added inclusion dir '%s'", fpath)
-
 
     return include
