@@ -46,6 +46,7 @@ class BadSymlinkFormatError(HashStringFormatError):
 
 fileignore = [
     re.compile(r'(~|\.swp)$'),
+    re.compile(r'^\.nfs\[0-9a-f]+$'),
 ]
 
 dirignore = [
