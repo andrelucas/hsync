@@ -101,8 +101,12 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
         # See if the directory list can be pruned.
         # XXX refactor.
+
         if not opts.no_ignore_dirs:
-            for dirname in dirs:
+
+            copydirs = dirs[:]  # Don't iterate over a list we may change.
+
+            for dirname in copydirs:
                 fulldirname = os.path.join(relroot, dirname)
                 for di in dirignore:
                     # dirignore is a regex anchored to the start - need to
