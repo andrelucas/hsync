@@ -9,6 +9,9 @@ Bugs
 
 - Lockfiles are not always automatically excluded from the scan
 
+- Error when selectively pulling a file instead of a directory is misleading
+  in the extreme
+
 - Relative filenames
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):
