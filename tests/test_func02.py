@@ -643,10 +643,6 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         for f in srcdel:
             self.assertFalse(os.path.exists(os.path.join(zlibdst, f)))
 
-    def _get_fetch_debug(self, err):
-        return (self.__get_debug(err, "fetch i_fetched"),
-                self.__get_debug(err, "fetch i_not_fetched"))
-
     def test_e2e_include_dst1(self):
         '''
         Run a transfer with dest -I, check that only the listed directory is
