@@ -82,7 +82,7 @@ class LockFile(object):
 
         if not output:
             log.debug("Failed to find process %i", lpid)
-            log.debug("Removing dead lockfile '%s'", self.lockfilename)
+            log.info("Removing dead lockfile '%s'", self.lockfilename)
             os.unlink(self.lockfilename)
 
         lock.close()
