@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import logging
 import os
+from subprocess import Popen, PIPE
 import sys
 
 from exceptions import *
@@ -14,7 +15,7 @@ log = logging.getLogger()
 
 class LockFile(object):
 
-    def __init__(self, lockfilename):
+    def __init__(self, lockfilename, break_dead_lockfile=True):
 
         self.lockfilename = lockfilename
         self.lock = None
@@ -22,6 +23,10 @@ class LockFile(object):
         if not os.path.isdir(lockdir):
             raise NotADirectoryError("Attempting to create lockfile %s "
                                      "in non-directory" % lockfilename)
+
+        if break_dead_lockfile:
+            self._break_attempt()
+
         log.debug("Attempting to open lockfile %s", lockfilename)
         try:
             lock = os.open(
@@ -47,6 +52,42 @@ class LockFile(object):
                 os.unlink(self.lockfilename)
             self.lockfilename = None
 
+    def _break_attempt(self):
+        try:
+            lock = open(self.lockfilename)
+        except IOError:
+            log.debug("No pre-existing lockfile '%s' seen", self.lockfilename)
+            return
+
+        lines = lock.readlines()
+        if len(lines) != 2:
+            # That's serious - it should be the right format, at least.
+            raise Exception("Lock file '%s' malformed" %
+                            self.lockfilename)
+        (lpid, _argv0) = lines
+        try:
+            lpid = int(lpid)
+        except ValueError:
+            raise Exception("Lock file '%s' malformed PID '%s'" %
+                            (self.lockfilename, lpid))
+
+        # See if there's a process with the matching pid with an
+        # executable that's the same as ours.
+        cmd = ('ps -o command= -p %s' % lpid).split()
+
+        log.debug("Running '%s' to check for existing process", cmd)
+        p = Popen(cmd, shell=False, stdout=PIPE, close_fds=True)
+        (output, _err) = p.communicate()
+        log.debug("'%s' cmd output: %s", cmd, output.splitlines())
+
+        if not output:
+            log.debug("Failed to find process %i", lpid)
+            log.debug("Removing dead lockfile '%s'", self.lockfilename)
+            os.unlink(self.lockfilename)
+
+        lock.close()
+        return
+
     def __del__(self):
         log.debug("LockFile __del__()")
         self.remove()
@@ -54,11 +95,12 @@ class LockFile(object):
 
 class LockFileManager(object):
 
-    def __init__(self, lockfilename):
+    def __init__(self, lockfilename, break_dead_lockfile=True):
         self.lockfilename = lockfilename
+        self.break_dead_lockfile = break_dead_lockfile
 
     def __enter__(self):
-        self.lock = LockFile(self.lockfilename)
+        self.lock = LockFile(self.lockfilename, self.break_dead_lockfile)
         return self.lock
 
     def __exit__(self, exc_type, exc_value, exc_tb):
