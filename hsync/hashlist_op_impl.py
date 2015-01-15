@@ -321,7 +321,11 @@ def hashlist_from_stringlist(strfile, opts, root=None):
             pass  # FFR
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=root)
-            hashlist.append(fh)
+            fname = os.path.basename(fh.fullpath)
+            if is_hashfile(fname):
+                log.debug("Skipping hash or lock file %s", fh.fullpath)
+            else:
+                hashlist.append(fh)
 
     return hashlist
 
