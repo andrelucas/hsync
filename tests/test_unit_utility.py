@@ -193,3 +193,86 @@ class UtilityIncludeUnitTestCase(unittest.TestCase):
 
         self.assertTrue(_test_include('include', is_dir=True))
         self.assertTrue(_test_include('include/alsoincluded'))
+
+
+class UtilityHashfileUnitTestCase(unittest.TestCase):
+
+    def test_simple_default(self):
+        '''Default hashfile detection'''
+        self.assertTrue(is_hashfile('HSYNC.SIG'))
+        self.assertTrue(is_hashfile('HSYNC.SIG.gz'))
+        self.assertFalse(is_hashfile('not-a-hashfile'))
+
+    def test_simple_compress(self):
+        '''Switchable compressed hashfile detection'''
+        self.assertTrue(is_hashfile('HSYNC.SIG', allow_compressed=True))
+        self.assertTrue(is_hashfile('HSYNC.SIG', allow_compressed=False))
+        self.assertTrue(is_hashfile('HSYNC.SIG.gz', allow_compressed=True))
+        self.assertFalse(is_hashfile('HSYNC.SIG.gz', allow_compressed=False))
+
+    def test_override(self):
+        '''Custom hashfile spec'''
+        override = 'custom-HSYNC.SIG'
+        self.assertTrue(is_hashfile('HSYNC.SIG', custom_hashfile=override))
+        self.assertTrue(is_hashfile(override, custom_hashfile=override))
+        self.assertFalse(is_hashfile('not-a-hashfile',
+                                     custom_hashfile=override))
+        self.assertTrue(is_hashfile('HSYNC.SIG.gz', custom_hashfile=override))
+        self.assertTrue(is_hashfile('%s.gz' % override,
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('HSYNC.SIG.gz',
+                                     custom_hashfile=override,
+                                     allow_compressed=False))
+        self.assertFalse(is_hashfile('%s.gz' % override,
+                                     custom_hashfile=override,
+                                     allow_compressed=False))
+
+    def test_lock(self):
+        '''Should detect locks too'''
+        self.assertTrue(is_hashfile('HSYNC.SIG.lock'))
+        self.assertFalse(is_hashfile('HSYNC.SIG.lock', allow_locks=False))
+
+        override = 'custom-HSYNC.SIG'
+
+        self.assertTrue(is_hashfile('HSYNC.SIG.lock',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('HSYNC.SIG.lock',
+                                     custom_hashfile=override,
+                                     allow_locks=False))
+        self.assertTrue(is_hashfile('%s.lock' % override,
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('%s.lock' % override,
+                                     custom_hashfile=override,
+                                     allow_locks=False))
+
+        self.assertTrue(is_hashfile('HSYNC.SIG.gz.lock',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('HSYNC.SIG.gz.lock',
+                                     custom_hashfile=override,
+                                     allow_locks=False))
+        self.assertTrue(is_hashfile('%s.gz.lock' % override,
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('%s.gz.lock' % override,
+                                     custom_hashfile=override,
+                                     allow_locks=False))
+
+        self.assertFalse(is_hashfile('HSYNC.SIG.gz.lock',
+                                    custom_hashfile=override,
+                                    allow_compressed=False))
+        self.assertFalse(is_hashfile('HSYNC.SIG.gz.lock',
+                                     custom_hashfile=override,
+                                     allow_locks=False,
+                                     allow_compressed=False))
+        self.assertFalse(is_hashfile('%s.gz.lock' % override,
+                                    custom_hashfile=override,
+                                    allow_compressed=False))
+        self.assertFalse(is_hashfile('%s.gz.lock' % override,
+                                     custom_hashfile=override,
+                                     allow_locks=False,
+                                     allow_compressed=False))
+
+
+    def test_bad_hashfile_name(self):
+        '''Don't allow bogus hashfile spec'''
+        with self.assertRaises(Exception):
+            is_hashfile('HSYNC.SIG', custom_hashfile='')

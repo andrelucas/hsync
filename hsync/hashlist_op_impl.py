@@ -12,7 +12,7 @@ import sys
 
 from exceptions import *
 from filehash import *
-from utility import is_dir_excluded, is_path_pre_excluded
+from utility import is_dir_excluded, is_path_pre_excluded, is_hashfile
 
 log = logging.getLogger()
 
@@ -158,12 +158,9 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
             fpath = os.path.join(root, filename)
 
-            if filename == opts.hash_file or \
-                    filename == opts.hash_file + '.lock' or \
-                    filename == opts.hash_file + '.gz' or \
-                    filename == opts.hash_file + '.gz.lock':
-                log.debug("Skipping pre-existing hash file '%s'",
-                          opts.hash_file)
+            # Don't include hashfiles or lockfiles.
+            if is_hashfile(filename, custom_hashfile=opts.hash_file):
+                log.debug("Skipping hash file or lock '%s'", filename)
                 continue
 
             skipped = False

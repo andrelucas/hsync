@@ -131,3 +131,54 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
                     log.debug("Added inclusion dir '%s'", fpath)
 
     return include
+
+
+##
+## Hashfile detection.
+##
+
+def is_hashfile(filename, custom_hashfile=None,
+                allow_locks=True, allow_compressed=True):
+
+    '''
+    Given a path, return True if it looks like a hashfile, False
+    otherwise.
+
+    Optionally, also return True if the path is a lockfile.
+    '''
+
+    log.debug("is_hashfile(%s, custom_hashfile=%s, allow_locks=%s, "
+              "allow_compressed=%s)",
+              filename, custom_hashfile, allow_locks, allow_compressed)
+
+    # Empty string is a coding error.
+    if custom_hashfile == '':
+        raise Exception("Empty string is not a valid hashfile name")
+
+    # Always check for the default hashfile HSYNC.SIG{.gz}.
+    if filename == 'HSYNC.SIG':
+        return True
+
+    if allow_locks:
+        if filename == 'HSYNC.SIG.lock':
+            return True
+
+    if allow_compressed and filename == 'HSYNC.SIG.gz':
+        return True
+
+    if allow_compressed and allow_locks and filename == 'HSYNC.SIG.gz.lock':
+        return True
+
+
+    if custom_hashfile is not None and custom_hashfile != 'HSYNC.SIG':
+        if filename == custom_hashfile:
+            return True
+        if allow_locks and filename == '%s.lock' % custom_hashfile:
+            return True
+        if allow_compressed and filename == '%s.gz' % custom_hashfile:
+            return True
+        if (allow_compressed and allow_locks and
+            filename == '%s.gz.lock' % custom_hashfile):
+            return True
+
+    return False
