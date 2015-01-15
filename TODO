@@ -22,8 +22,6 @@ Features
 
 - Add metadata to the HSYNC.SIG* file, in top-comments.
 
-- Add a built-in way to remove an old lockfile
-
 - Checkpoint the dest signature file.
 
 - Transfer statistics
