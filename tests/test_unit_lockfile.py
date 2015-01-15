@@ -96,7 +96,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
                 print('%s\n%s' % (testpid, sys.argv[0]), file=f)
 
     def test_lockfile_dead_nobreak(self):
-        '''When instructed, don't remove dead process lockfile.'''
+        '''When instructed, don't remove dead process lockfile'''
 
         self._create_bogus_lockfile(self.locktmp)
 
@@ -106,7 +106,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
             LockFile(self.locktmp, break_dead_lockfile=False)
 
     def test_lockfile_dead_break(self):
-        '''Detect and break a lockfile from a dead process.'''
+        '''Detect and break a lockfile from a dead process'''
 
         self._create_bogus_lockfile(self.locktmp)
 
@@ -115,7 +115,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
             self.assertTrue(os.path.isfile(self.locktmp))
 
     def test_lockfile_alive_nobreak(self):
-        '''Don't break the lockfile when we're the process holding it.'''
+        '''Don't break the lockfile when we're the process holding it'''
 
         self._create_bogus_lockfile(self.locktmp, lockself=True)
 
@@ -132,7 +132,7 @@ class TestUnitLockFileTestCase(unittest.TestCase):
             LockFile(self.locktmp)
 
     def test_lockfile_detect_corrupt_lockfile_length(self):
-        '''Notice when the lockfile isn't two lines long.'''
+        '''Notice when the lockfile isn't two lines long'''
 
         self._create_bogus_lockfile(self.locktmp, lockself=True,
                                     shortfile=True)

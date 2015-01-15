@@ -194,7 +194,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_exclude_dst1(self):
         '''
-        Transfer with dest -X, check the directory is excluded.
+        Transfer with dest -X, check the directory is excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -237,7 +237,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_exclude_dst2(self):
         '''
-        Transfer with dest -X subdir, check the directory is excluded.
+        Transfer with dest -X subdir, check the directory is excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -282,7 +282,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
         self.assertFalse(self._path_in_list('contrib/amd64', fetchfiles))
 
     def test_e2e_exclude_src1(self):
-        '''Transfer with src -X, check the directory is excluded.'''
+        '''Transfer with src -X, check the directory is excluded'''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
         zlibdst = os.path.join(self.out_tmp, 'zlib-1.2.8')
@@ -325,8 +325,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_exclude_src2(self):
         '''
-        Transfer with src -X subdir, check the directory is
-        excluded.
+        Transfer with src -X subdir, check the directory is excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -416,7 +415,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
     def test_e2e_excludeglob_dst2(self):
         '''
         Transfer with dest -X glob in subdir, check the right
-        directories are excluded.
+        directories are excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -463,7 +462,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_excludeglob_src1(self):
         '''
-        Transfer with src -X glob, check the directory is excluded.
+        Transfer with src -X glob, check the directory is excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -507,8 +506,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_excludeglob_src2(self):
         '''
-        Transfer with src -X glob subdir, check the directory is
-        excluded.
+        Transfer with src -X glob subdir, check the directory is excluded
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -553,7 +551,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
 
     def test_e2e_nodelete1(self):
         '''
-        Transfer check --no-delete on/off.
+        Transfer check --no-delete on/off
 
         Delete some stuff in the source, re-run the source side then the dest
         side.
@@ -646,7 +644,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
     def test_e2e_include_dst1(self):
         '''
         Run a transfer with dest -I, check that only the listed directory is
-        included.
+        included
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
@@ -688,7 +686,7 @@ class HsyncLocalDiskFuncTestCase(unittest.TestCase):
     def test_e2e_include_glob_dst1(self):
         '''
         Run a transfer with dest -I glob, check that only the listed directory
-        is included.
+        is included
         '''
         self._unpack_tarball(self.in_tmp, self.zlib_tarball)
         zlibsrc = os.path.join(self.in_tmp, 'zlib-1.2.8')
