@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-import fnmatch
 import gzip
 import logging
 import os
@@ -322,7 +321,7 @@ def hashlist_from_stringlist(strfile, opts, root=None):
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=root)
             fname = os.path.basename(fh.fullpath)
-            if is_hashfile(fname):
+            if is_hashfile(fname, opts.hash_file):
                 log.debug("Skipping hash or lock file %s", fh.fullpath)
             else:
                 hashlist.append(fh)
