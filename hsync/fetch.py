@@ -506,6 +506,17 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                              "group %s",
                              tgt_file, fh.user, fh.group)
 
+            # Don't rely on os.rename() preserving the mode.
+            if filestat.st_mode != fh.mode:
+                if not opts.quiet:
+                    print(" (mode %06o -> %06o)" %
+                          (filestat.st_mode, fh.mode), end='')
+
+                log.debug("'%s': Setting mode: %06o", fh.fpath, fh.mode)
+                if os.chmod(tgt_file, fh.mode) == -1:
+                    log.warn("Failed to fchmod '%s' to %06o",
+                             fh.fpath, fh.mode)
+
             changed.mode = False  # We didn't change it, we created it.
 
             changed.mtime = True
