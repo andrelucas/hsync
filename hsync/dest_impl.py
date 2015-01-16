@@ -5,6 +5,7 @@ from __future__ import print_function
 import gzip
 import logging
 import os
+import os.path
 import tempfile
 import urllib2
 import urlparse
@@ -349,11 +350,14 @@ def _configure_hashurl(opt):
         hashurl = cano_url(opt.signature_url)
         log.debug("Explicit signature URL '%s'", hashurl)
 
+        p_url = urlparse.urlparse(hashurl)
+        u_path = p_url.path
+        shortname = os.path.basename(u_path)
+
         if opt.signature_url.endswith('.gz'):
             log.debug("Assuming compression for signature URL '%s'",
                       opt.signature_url)
             compressed_sig = True
-            shortname += '.gz'
 
         if opt.remote_sig_compressed:
             log.debug("Force remote signature compression mode")
@@ -366,5 +370,8 @@ def _configure_hashurl(opt):
 
         hashurl = cano_url(opt.source_url, slash=True) + hashfile
         log.debug("Synthesised signature URL '%s'", hashurl)
+
+    log.debug("_configure_hashurl(): hashurl=%s shortname=%s "
+              "compressed_sig=%s", hashurl, shortname, compressed_sig)
 
     return (hashurl, shortname, compressed_sig)
