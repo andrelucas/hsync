@@ -496,6 +496,9 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
             expect_gid = fh.gid
 
             filestat = os.stat(tgt_file)
+            log.debug("'%s' uid %s gid %s mode %06o", tgt_file,
+                      filestat.st_uid, filestat.st_gid, filestat.st_mode)
+
             if filestat.st_uid != expect_uid or \
                     filestat.st_gid != expect_gid:
                 changed.uidgid = True
@@ -514,7 +517,7 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
 
                 log.debug("'%s': Setting mode: %06o", fh.fpath, fh.mode)
                 if os.chmod(tgt_file, fh.mode) == -1:
-                    log.warn("Failed to fchmod '%s' to %06o",
+                    log.warn("Failed to chmod '%s' to %06o",
                              fh.fpath, fh.mode)
 
             changed.mode = False  # We didn't change it, we created it.
