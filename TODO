@@ -12,6 +12,9 @@ Bugs
 - Error when selectively pulling a file instead of a directory is misleading
   in the extreme
 
+- Files are created (or more likely moved into place) with the wrong mode.
+  Subsequent passes fix it, but that's not really the point.
+
 - Relative filenames
   - '-S .' doesn't work
   - '-U ../blah' doesn't work (puts it in /, probably needs a .normpath()):

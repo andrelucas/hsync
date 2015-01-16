@@ -483,22 +483,6 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                 raise OSOperationFailedError("Failed to open '%s'" %
                                              tgt_file_rnd)
 
-            expect_uid = fh.uid
-            expect_gid = fh.gid
-
-            filestat = os.stat(tgt_file_rnd)
-            if filestat.st_uid != expect_uid or \
-                    filestat.st_gid != expect_gid:
-                changed.uidgid = True
-                log.debug("Changing file %s ownership to %s/%s",
-                          tgt_file_rnd, fh.user, fh.group)
-                if os.fchown(tgt, expect_uid, expect_gid) == -1:
-                    log.warn("Failed to fchown '%s' to user %s "
-                             "group %s",
-                             tgt_file_rnd, fh.user, fh.group)
-
-            changed.mode = False  # We didn't change it, we created it.
-
             os.write(tgt, contents)
             os.close(tgt)
             log.debug("Moving into place: '%s' -> '%s'",
@@ -507,6 +491,22 @@ def _file_fetch(fh, source_url, changed, counters, random, opts):
                 raise OSOperationFailedError(
                     "Failed to rename '%s' to '%s'" %
                     (tgt_file_rnd, tgt_file))
+
+            expect_uid = fh.uid
+            expect_gid = fh.gid
+
+            filestat = os.stat(tgt_file)
+            if filestat.st_uid != expect_uid or \
+                    filestat.st_gid != expect_gid:
+                changed.uidgid = True
+                log.debug("Changing file %s ownership to %s/%s",
+                          tgt_file, fh.user, fh.group)
+                if os.chown(tgt_file, expect_uid, expect_gid) == -1:
+                    log.warn("Failed to chown '%s' to user %s "
+                             "group %s",
+                             tgt_file, fh.user, fh.group)
+
+            changed.mode = False  # We didn't change it, we created it.
 
             changed.mtime = True
             os.utime(tgt_file, (fh.mtime, fh.mtime))
