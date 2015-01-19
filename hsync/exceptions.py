@@ -49,3 +49,7 @@ class UnexpectedArgumentsError(CommandLineArgumentsError):
 
 class NotADirectoryError(OSError):
     pass
+
+
+class UnsupportedModeError(CommandLineArgumentsError):
+    pass
