@@ -3,8 +3,7 @@
 Hsync is designed to do rsync-style file tree synchronisation, but to transfer
 only whole files in a way that can be scanned in-transit.
 
-It goes to some trouble to minimise the amount of data transferred, as the
-link for which it is designed is *very* slow.
+It goes to some trouble to minimise the amount of data transferred.
 
 ## In brief
 
