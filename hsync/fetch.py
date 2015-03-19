@@ -34,6 +34,7 @@ import os
 import re
 from random import SystemRandom
 import sys
+import urllib
 import urllib2
 import urlparse
 
@@ -294,7 +295,12 @@ def fetch_needed(needed, source, opts):
             else:
                 log.debug("fetch_needed: %s", fh.fpath)
 
-        source_url = urlparse.urljoin(source, fh.fpath)
+        quoted_fpath = urllib.quote(fh.fpath)
+        if log.isEnabledFor(logging.DEBUG):
+            if quoted_fpath != fh.fpath:
+                log.debug("fetch_needed: escaping '%s' -> '%s'",
+                          fh.fpath, quoted_fpath)
+        source_url = urlparse.urljoin(source, quoted_fpath)
 
         success = False
 

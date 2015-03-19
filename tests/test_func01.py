@@ -320,6 +320,25 @@ class HsyncBruteForceFunctionalTestCase(unittest.TestCase):
         self.rundiff(tardir, None, dst_optlist=['-P'], web=True)
         shutil.rmtree(tardir)
 
+    def test_web_tarball_filename_space(self):
+        '''
+        Unpack some tarballs, add a filename with a space, fetch over www'''
+        os.chdir(self.topdir)
+        tarball = 'zlib-1.2.8.tar.gz'
+        tardir = 'zlib-1.2.8'
+        subprocess.check_call(("tar xzf %s" % tarball).split())
+
+        spacename = 'filename with spaces'
+        with open(os.path.join(tardir, spacename), 'w') as f:
+            f.write("hello world")
+
+        fpath = os.path.join(tardir, spacename)
+        self.assertTrue(os.path.exists(fpath), "Extra file was created")
+
+        self.rundiff(tardir, None, dst_optlist=['-P'], web=True)
+
+        shutil.rmtree(tardir)
+
     def test_web_tarball_compress(self):
         '''Unpack some tarballs, signature with compression, fetch over www'''
         os.chdir(self.topdir)

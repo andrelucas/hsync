@@ -192,6 +192,16 @@ class FileHashCreateFromStringTestCase(unittest.TestCase):
                 (self.user, self.group, time.time())
             FileHash.init_from_string(fstr, root='/')
 
+    def test_create_as_file_with_space(self):
+        fstr = '0 100644 %s %s %s 100 /etc/hosts in space' % \
+            (self.user, self.group, time.time())
+        fh = FileHash.init_from_string(fstr, root='/etc')
+        self.assertTrue(fh.is_file)
+        self.assertFalse(fh.is_dir)
+        self.assertFalse(fh.is_link)
+        self.assertTrue(fh.size, 100)
+        self.assertEquals(fh.fpath, '/etc/hosts in space')
+
 
 class FileHashCompareUnitTestCase(unittest.TestCase):
 
