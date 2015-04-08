@@ -21,7 +21,7 @@ Bugs
 
 - Proxy auth doesn't work (don't think this is me, I think it's urllib2)
 
-- Symlink move doesn't seem to work.
+- Symlink move doesn't work and is untested.
 
 Features
 
