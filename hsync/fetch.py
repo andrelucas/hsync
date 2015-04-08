@@ -643,7 +643,7 @@ def _link_fetch(fh, changed, opts):
             if curtgt != fh.link_target:
                 changed.contents = True
                 log.debug("Moving symlink '%s'->'%s'",
-                          linkpath, dh.link_target)
+                          linkpath, fh.link_target)
                 if not opts.quiet:
                     print("L: (move) %s -> %s" %
                           (linkpath, fh.link_target))
