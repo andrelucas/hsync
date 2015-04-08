@@ -21,6 +21,8 @@ Bugs
 
 - Proxy auth doesn't work (don't think this is me, I think it's urllib2)
 
+- Symlink move doesn't seem to work.
+
 Features
 
 - Add metadata to the HSYNC.SIG* file, in top-comments.
