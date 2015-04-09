@@ -86,7 +86,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
     if existing_hashlist is not None:
         lookup_existing = hashlist_to_dict(existing_hashlist)
         defer_fs_read = True
-        source_extramsg = ' (using pre-existing hash to reduce IO)'
+        source_extramsg = ' (with cache)'
 
     hashlist = []
 
