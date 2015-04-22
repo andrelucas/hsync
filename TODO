@@ -32,6 +32,8 @@ Features
 - Transfer statistics
   - They're kept, so surface them.
 
+- Parallelise signature generation if useful
+
 - Write in-progress downloads to disk instead of memory, like rsync
 
 - Truncate long paths (for display)
