@@ -229,7 +229,7 @@ def main(cmdargs):
     if log.isEnabledFor(logging.DEBUG):
         log.debug("hashlib.algorithms: %s", hashlib.algorithms)
 
-    if not 'sha256' in hashlib.algorithms:
+    if 'sha256' not in hashlib.algorithms:
         log.error("No SHA256 implementation in hashlib!")
         return False
 
