@@ -3,6 +3,13 @@ TODO for hsync
 
 Bugs
 
+- HIGH: If the transfer completes successfully but for odd reasons (e.g. a
+  midbox with 32-bit file offsets things it's done at 2GB), there's no check
+  against the original, expected signature and the file is locally marked as ok
+  and complete.
+
+  - Add a check against the server-side signature and fail for no-match.
+
 - Documentation
 
 - Reduce memory consumption
