@@ -334,9 +334,16 @@ class FileHash(object):
 
     def hash_file(self):
         log.debug("File: %s", self.fullpath)
-        f = open(self.fullpath, 'rb').read()  # Could read a *lot*.
+        block_size = 10 * 1000 * 1000
+        f = open(self.fullpath, 'rb')
         md = hashlib.sha256()
-        md.update(f)
+
+        while True:
+            data = f.read(block_size)
+            if not data:
+                break
+            md.update(data)
+
         log.debug("Hash for %s: %s", self.fpath, md.hexdigest())
         self.contents_hash = md.digest()
         self.hashstr = md.hexdigest()
