@@ -14,16 +14,16 @@
 #       names of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 # DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 # (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 # LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import print_function
 
@@ -108,7 +108,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
         excdirs = set([d for d in opts.exclude_dir
                        if not re_globmatch.search(d)])
         excdirs_glob = set([d for d in opts.exclude_dir
-                            if not d in excdirs])
+                            if d not in excdirs])
     else:
         excdirs = set()
 
@@ -149,8 +149,8 @@ def hashlist_generate(srcpath, opts, source_mode=True,
 
         if opts.exclude_dir:
             done_skip = False
-            copydirs = dirs[:]  # Don't iterate over a list we'll be changing
-                                # inside the loop.
+            # Don't iterate over a list we'll be changing inside the loop.
+            copydirs = dirs[:]
             for dirname in copydirs:
                 fulldirname = os.path.join(relroot, dirname)
 
@@ -331,7 +331,7 @@ def hashlist_to_dict(hashlist):
     for fh in hashlist:
         hdict[fh.fpath] = fh
 
-    #log.debug("hdict %s", hdict)
+    # log.debug("hdict %s", hdict)
     return hdict
 
 
@@ -390,7 +390,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         direx = set([d for d in opts.exclude_dir
                      if not re_globmatch.search(d)])
         direx_glob = set([d for d in opts.exclude_dir
-                          if not d in direx])
+                          if d not in direx])
     else:
         direx = set()
         direx_glob = set()
@@ -451,7 +451,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
     not_needed = []
     for fpath, fh in dst_fdict.iteritems():
-        if not fpath in src_fdict:
+        if fpath not in src_fdict:
             log.debug("%s: not found in source", fpath)
             not_needed.append(fh)
 
