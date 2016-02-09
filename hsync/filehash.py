@@ -197,8 +197,8 @@ class FileHash(object):
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
         self.gid = self.mapper.get_gid_for_group(group)
-        self.mtime = int(float(mtime))  # Robustness principle - old versions
-                                        # have float mtime.
+        # Robustness principle - old versions have float mtime.
+        self.mtime = int(float(mtime))
         self.size = int(size)  # XXX int length?
         self.size_is_known = True
 
@@ -214,8 +214,8 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
-        #self.dest_missing = True
-        #self.contents_differ = False
+        # self.dest_missing = True
+        # self.contents_differ = False
         self.has_real_hash = False
 
         self.is_dir = self.is_link = self.is_file = False
@@ -227,7 +227,7 @@ class FileHash(object):
         elif S_ISLNK(mode):
             self.is_link = True
             self.has_real_hash = True
-            if not '>>>' in fpath:
+            if '>>>' not in fpath:
                 raise BadSymlinkFormatError(
                     "%s: Expected '>>>' in symlink hash" % fpath)
             (link, target) = fpath.split('>>>', 1)
