@@ -77,3 +77,11 @@ class NotADirectoryError(OSError):
 
 class UnsupportedModeError(CommandLineArgumentsError):
     pass
+
+# hashlist.py
+
+class NotAFileHashError(Exception):
+    pass
+
+class DuplicateEntryInHashListError(Exception):
+    pass

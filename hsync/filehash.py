@@ -560,3 +560,20 @@ class FileHash(object):
         # Convenient debugging representation.
         return ','.join([fh.fpath, '%06o' % fh.mode, str(fh.mtime),
                          fh.user, fh.group, str(fh.size)])
+
+    # These comparisons are for the purposes of object storage. They're
+    # not effective for comparing the files when determining whether or
+    # not to copy them; use compare() for that.
+
+    def hash(self):
+        return (self.fullpath, self.size, self.mode, self.mtime,
+                self.uid, self.gid, self.hashstr)
+
+    def strhash(self):
+        return str(self.hash)
+
+    def __hash__(self):
+        return self.strhash()
+
+    def __eq__(self, other):
+        return self.hash() == other.hash()

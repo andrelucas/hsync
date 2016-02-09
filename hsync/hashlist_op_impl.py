@@ -36,6 +36,7 @@ import sys
 
 from exceptions import *
 from filehash import *
+from hashlist import *
 from utility import is_dir_excluded, is_path_pre_excluded, is_hashfile
 
 log = logging.getLogger()

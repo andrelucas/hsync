@@ -14,20 +14,21 @@
 #       names of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 # DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 # (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 # LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import print_function
 
 import inspect
+import cPickle as pickle
 import os
 import shutil
 import time
@@ -376,3 +377,113 @@ class FileHashSymlinkSourceNormUnitTestcase(unittest.TestCase):
             (fh, np) = self._symlink_norm('source/link', tgt, absfail=True)
             self.assertEqual(np, tgt, "Link stays inbound")
             self.assertEqual(tgt, fh.link_target, "Object link target set")
+
+class FileHashObjectHashableUnitTestcase(unittest.TestCase):
+
+    me = inspect.getfile(inspect.currentframe())
+    topdir = os.path.join(os.path.dirname(me), 'test')
+
+    mapper = UidGidMapper()
+
+    @classmethod
+    def setUpClass(self):
+        self.user = self.mapper.get_name_for_uid(os.getuid())
+        self.group = self.mapper.get_group_for_gid(os.getgid())
+
+    def tearDown(self):
+        if hasattr(self, 'tmp') and self.tmp:
+            shutil.rmtree(self.tmp, True)
+
+    def test_equals_string(self):
+        '''Obvious string filehash tests'''
+        fha = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                        (self.user, self.group))
+
+        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                       (self.user, self.group))
+        self.assertEqual(fha, fh, "Ident initialiser => eq")
+
+        fh = FileHash.init_from_string("1 100644 %s %s 0 0 test" %
+                                       (self.user, self.group))
+        self.assertNotEqual(fha, fh, "Hash change => neq")
+
+        fh = FileHash.init_from_string("0 100664 %s %s 0 0 test" %
+                                       (self.user, self.group))
+        self.assertNotEqual(fha, fh, "Mode change => neq")
+
+        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                       ('user2', self.group))
+        self.assertNotEqual(fha, fh, "User change => neq")
+
+        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                       (self.user, 'group2'))
+        self.assertNotEqual(fha, fh, "Group change => neq")
+
+        fh = FileHash.init_from_string("0 100644 %s %s 1 0 test" %
+                                       (self.user, self.group))
+        self.assertNotEqual(fha, fh, "Mtime change => neq")
+
+        fh = FileHash.init_from_string("0 100644 %s %s 0 1 test" %
+                                       (self.user, self.group))
+        self.assertNotEqual(fha, fh, "Size change => neq")
+
+        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test2" %
+                                       (self.user, self.group))
+        self.assertNotEqual(fha, fh, "Filename change => neq")
+
+    def test_equals_file(self):
+        tname = os.path.join(self.topdir, 'testfile')
+        with open(tname, "wb") as f:
+            f.write("Rhubarb")
+        fha = FileHash.init_from_file(tname)
+        orig_st = os.stat(tname) # We'll use this later.
+
+        fh = FileHash.init_from_file(tname)
+        self.assertEqual(fha, fh, "Exact same file => eq")
+
+        tname_1 = tname + '1'
+        with open(tname_1, "wb") as f:
+            f.write("Rhubarb")
+        fh = FileHash.init_from_file(tname_1)
+        self.assertNotEqual(fha, fh, "Different name, time => neq")
+
+        # Write the same file again, which will change the time.
+        with open(tname, "wb") as f:
+            f.write("Rhubarb")
+        fh = FileHash.init_from_file(tname)
+        self.assertNotEqual(fha, fh, "Different mtime => neq")
+
+        # Now reset the mtime and compare.
+        os.utime(tname, (orig_st.st_atime, orig_st.st_mtime))
+        fh = FileHash.init_from_file(tname)
+        self.assertEqual(fha, fh, "New file, same contents, same mtime => eq")
+
+
+class FileHashObjectPicklableUnitTestcase(unittest.TestCase):
+
+    me = inspect.getfile(inspect.currentframe())
+    topdir = os.path.join(os.path.dirname(me), 'test')
+
+    mapper = UidGidMapper()
+
+    @classmethod
+    def setUpClass(self):
+        self.user = self.mapper.get_name_for_uid(os.getuid())
+        self.group = self.mapper.get_group_for_gid(os.getgid())
+
+    def tearDown(self):
+        if hasattr(self, 'tmp') and self.tmp:
+            shutil.rmtree(self.tmp, True)
+
+    def test_pickle(self):
+        tname = os.path.join(self.topdir, 'testfile_pickle')
+        with open(tname, "wb") as f:
+            f.write("Rhubarb")
+        fha = FileHash.init_from_file(tname)
+        p = pickle.dumps(fha)
+        self.assertIsNotNone(p, "Pickle of FileHash is not None")
+        self.assertNotEqual(p, "", "Pickle of FileHash is not empty string")
+
+        fh = FileHash.init_from_file(tname) # Same object.
+        p2 = pickle.dumps(fha)
+        self.assertEqual(p, p2, "Pickles of same filehash are the same")
