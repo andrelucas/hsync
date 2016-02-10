@@ -27,8 +27,11 @@
 
 from __future__ import print_function
 
+import cPickle
 import logging
-import shelve
+import os
+import shutil
+import sqlite3
 import tempfile
 
 from exceptions import *
@@ -43,15 +46,22 @@ class HashList(object):
     than can be comfortably stored in memory.
     '''
 
-    # Sync the shelve every so many writes.
-    force_sync_count = 1000
+    # Sync the database every so many writes. (XXX necessary for sqlite?)
+    # force_sync_count = 100000
 
-    def __init__(self, warn_on_duplicates=True, raise_on_duplicates=True):
+    def __init__(self,
+                 warn_on_duplicates=True, raise_on_duplicates=True,
+                 delete_on_close=True):
         log.debug("Hashlist __init__()")
         self.tmpd = tempfile.mkdtemp()  # XXX spec? test?
         self.tmpname = tempfile.mktemp("", "hashlist.", self.tmpd)
-        log.debug("Hashlist: open shelve on '%s'", self.tmpname)
-        self.shl = shelve.open(self.tmpname, 'n', 2)
+        log.debug("Hashlist: open sqlite3 database on '%s'", self.tmpname)
+        self.dbconn = sqlite3.connect(self.tmpname)
+
+        self.cur = self.dbconn.cursor()
+        self.cur.execute("create table fh (hash str, blob blob)")
+        self.cur.execute("create index fhindex on fh(hash)")
+
         self.list = []
         self.warn_on_duplicates = warn_on_duplicates
         self.raise_on_duplicates = raise_on_duplicates
@@ -59,15 +69,33 @@ class HashList(object):
         self.write_total = 0
         self.read_total = 0
 
-    def close(self):
+    def close(self, want_sync=False):
         log.debug("HashList.close() total reads %i writes %i",
                   self.read_total, self.write_total)
-        self.sync()
-        self.shl.close()
+
+        # No point doing a commit if we're about to delete.
+        if want_sync:
+            self.sync()
+
+        self.cur = None
+        if self.dbconn is not None:
+            self.dbconn.close()
+        self.dbconn = None
+
+    def __del__(self):
+        self.close()
+        log.debug("HashList.__del__(): removing filesystem objects")
+        try:
+            os.unlink(self.tmpname)
+        except OSError:
+            pass  # Don't care if it fails.
+
+        shutil.rmtree(self.tmpd, True)  # Don't care if this fails either.
+        log.debug("HashList: Final exit")
 
     def sync(self):
         log.debug("HashList.sync()")
-        self.shl.sync()
+        self.dbconn.commit()
 
     def _assert_filehash(self, fh):
         '''Raise NotAFileHashError unless fh is a FileHash'''
@@ -77,10 +105,26 @@ class HashList(object):
     def write_increment(self):
         self.write_count += 1
         self.write_total += 1
-        if self.write_count >= self.force_sync_count:
-            log.debug("HashList: sync() after %i writes", self.write_count)
-            self.shl.sync()
-            self.write_count = 0
+        # if self.write_count >= self.force_sync_count:
+        #     log.debug("HashList: sync() after %i writes", self.write_count)
+        #     self.sync()
+        #     self.write_count = 0
+
+    def _insert(self, fh):
+        '''Insert the given filehash into the database.'''
+        pdata = cPickle.dumps(fh, cPickle.HIGHEST_PROTOCOL)
+        self.cur.execute('insert into fh (hash, blob) values (:hs, :blob)',
+                         {"hs": fh.strhash(), "blob": sqlite3.Binary(pdata)})
+
+    def _fetch(self, hashstr):
+        '''Retrieve filehashes with the given hashstr.'''
+        self.cur.execute('select (blob) from fh where hash = :hs',
+                         {"hs": hashstr})
+        fhlist = []
+        for row in self.cur:
+            fhlist.append(cPickle.loads(str(row[0])))
+
+        return fhlist
 
     def append(self, fh):
         '''
@@ -91,12 +135,15 @@ class HashList(object):
         log.debug("HashList.append('%s') cursize %i", fh, len(self))
         strhash = fh.strhash()
         if self.raise_on_duplicates or self.warn_on_duplicates:
-            if strhash in self.shl:
+            fhl = self._fetch(strhash)
+            if len(fhl) > 0:
                 if self.raise_on_duplicates:
                     raise DuplicateEntryInHashListError()
                 if self.warn_on_duplicates:
-                    log.warning("Duplicate entry '%s' in HashList", strhash)
-        self.shl[strhash] = fh
+                    log.warning("Duplicate entry for hash '%s' in HashList",
+                                strhash)
+
+        self._insert(fh)
         self.list.append(strhash)
         self.write_increment()
 
@@ -112,16 +159,19 @@ class HashList(object):
         return len(self.list)
 
     def __getitem__(self, index):
+        log.debug("HashList.__getitem__[%i]", index)
         self.read_total += 1
-        return self.shl[self.list[index]]
+        fh = self._fetch(self.list[index])
+        return fh[0]
 
     def __iter__(self):
         return self.list_generator()
 
     def list_generator(self):
-        for fh in self.list:
-            yield self.shl[fh]
+        log.debug("HashList.list_generator()")
+        for hashstr in self.list:
+            yield self._fetch(hashstr)[0]
 
     def sort_by_path(self):
         '''Sort the hashlist by the FileHash.fpath field.'''
-        self.list.sort(key=lambda fh: self.shl[fh].fpath)
+        self.list.sort(key=lambda hashstr: self._fetch(hashstr)[0].fpath)

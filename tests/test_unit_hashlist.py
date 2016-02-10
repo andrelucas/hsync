@@ -28,6 +28,7 @@
 from __future__ import print_function
 
 import inspect
+import shutil
 import unittest
 
 from hsync.exceptions import *
@@ -106,7 +107,7 @@ class HashListTestCase(unittest.TestCase):
         fhlist = []
         pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        for n in xrange(100):
+        for n in xrange(1000):
             fh = FileHash.init_from_string(pfx + '%0.2i' % n)
             fhlist.append(fh)
 
@@ -123,7 +124,7 @@ class HashListTestCase(unittest.TestCase):
         fhlist = []
         pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        for n in xrange(100):
+        for n in xrange(1000):
             fh = FileHash.init_from_string(pfx + '%0.2i' % n)
             fhlist.append(fh)
 
