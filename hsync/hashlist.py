@@ -104,3 +104,7 @@ class HashList(object):
     def list_generator(self):
         for fh in self.list:
             yield self.shl[fh]
+
+    def sort_by_path(self):
+        '''Sort the hashlist by the FileHash.fpath field.'''
+        self.list.sort(key=lambda fh: self.shl[fh].fpath)

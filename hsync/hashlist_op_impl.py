@@ -89,7 +89,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
         defer_fs_read = True
         source_extramsg = ' (with cache)'
 
-    hashlist = []
+    hashlist = HashList()
 
     if not opts.quiet:
         if source_mode:
@@ -264,7 +264,8 @@ def sigfile_write(hashlist, abs_path, opts,
               (verb, abs_path, compress))
 
     log.debug("Sorting signature file")
-    hashlist.sort(key=lambda fh: fh.fpath)
+    # hashlist.sort(key=lambda fh: fh.fpath)
+    hashlist.sort_by_path()
 
     writemode = 'w'
 
@@ -315,10 +316,12 @@ def hash_of_hashlist(hashlist):
     a composite hash.
     '''
 
+    log.debug("hash_of_hashlist(): start")
     md = hashlib.sha256()
     for fh in hashlist:
         md.update(fh.sha_hash())
 
+    log.debug("hash_of_hashlist(): end")
     return md.hexdigest()
 
 
@@ -338,7 +341,8 @@ def hashlist_to_dict(hashlist):
 
 def hashlist_from_stringlist(strfile, opts, root=None):
 
-    hashlist = []
+    log.debug("hashlist_from_stringlist():")
+    hashlist = HashList()
     for l in strfile:
         if l.startswith("#"):
             pass  # FFR
