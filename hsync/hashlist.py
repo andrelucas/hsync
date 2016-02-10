@@ -43,6 +43,9 @@ class HashList(object):
     than can be comfortably stored in memory.
     '''
 
+    # Sync the shelve every so many writes.
+    force_sync_count = 1000
+
     def __init__(self, warn_on_duplicates=True, raise_on_duplicates=True):
         log.debug("Hashlist __init__()")
         self.tmpd = tempfile.mkdtemp()  # XXX spec? test?
@@ -52,9 +55,13 @@ class HashList(object):
         self.list = []
         self.warn_on_duplicates = warn_on_duplicates
         self.raise_on_duplicates = raise_on_duplicates
+        self.write_count = 0
+        self.write_total = 0
+        self.read_total = 0
 
     def close(self):
-        log.debug("HashList.close()")
+        log.debug("HashList.close() total reads %i writes %i",
+                  self.read_total, self.write_total)
         self.sync()
         self.shl.close()
 
@@ -67,13 +74,21 @@ class HashList(object):
         if type(fh) is not FileHash:
             raise NotAFileHashError()
 
+    def write_increment(self):
+        self.write_count += 1
+        self.write_total += 1
+        if self.write_count >= self.force_sync_count:
+            log.debug("HashList: sync() after %i writes", self.write_count)
+            self.shl.sync()
+            self.write_count = 0
+
     def append(self, fh):
         '''
         Add a FileHash object to the store. Raise a NotAFileHashError
         if anything other than a FileHash is offered.
         '''
         self._assert_filehash(fh)
-        log.debug("HashList.append('%s')" % fh)
+        log.debug("HashList.append('%s') cursize %i", fh, len(self))
         strhash = fh.strhash()
         if self.raise_on_duplicates or self.warn_on_duplicates:
             if strhash in self.shl:
@@ -83,6 +98,7 @@ class HashList(object):
                     log.warning("Duplicate entry '%s' in HashList", strhash)
         self.shl[strhash] = fh
         self.list.append(strhash)
+        self.write_increment()
 
     def extend(self, fhlist):
         '''
@@ -96,6 +112,7 @@ class HashList(object):
         return len(self.list)
 
     def __getitem__(self, index):
+        self.read_total += 1
         return self.shl[self.list[index]]
 
     def __iter__(self):
