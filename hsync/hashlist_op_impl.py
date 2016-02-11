@@ -401,7 +401,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         direx_glob = set()
 
     # Now compare the two dictionaries.
-    needed = []
+    needed = HashList()
     excluded_dirs = set()
 
     mapper = UidGidMapper()
@@ -454,7 +454,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
             fh.dest_missing = True
             needed.append(fh)
 
-    not_needed = []
+    not_needed = HashList()
     for fpath, fh in dst_fdict.iteritems():
         if fpath not in src_fdict:
             log.debug("%s: not found in source", fpath)
