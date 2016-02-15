@@ -132,6 +132,7 @@ class FileHash(object):
         self.size_comparison_valid = False
         self.is_file = self.is_dir = self.is_link = False
         self.ignore = False
+        self.dest_missing = False  # Makes sense for a real fs object.
         self.has_real_hash = False
 
         if S_ISDIR(mode):
@@ -214,7 +215,7 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
-        # self.dest_missing = True
+        self.dest_missing = True  # Safe default.
         # self.contents_differ = False
         self.has_real_hash = False
 
