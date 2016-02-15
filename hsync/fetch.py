@@ -246,7 +246,7 @@ def fetch_needed(needed, source, opts):
         log.debug("Includes: %s", opts.include)
         re_globmatch = re.compile(r'[*?\[\]]')
         incset = set([d for d in opts.include if not re_globmatch.search(d)])
-        incset_glob = set([d for d in opts.include if not d in incset])
+        incset_glob = set([d for d in opts.include if d not in incset])
     else:
         incset = set()
         incset_glob = set()
