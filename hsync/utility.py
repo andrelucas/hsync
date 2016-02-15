@@ -50,9 +50,37 @@ def cano_url(url, slash=False):
     return url
 
 
-##
-## hashlist_op_impl exclusion processing.
-##
+def dumpframe(header="", depth=4):
+    '''
+    Dump the call frame for the caller, minus the call to this function
+    which is unlikely to be helpful information.
+
+    Only does anything at loglevel DEBUG, so it is safe to call unguarded
+    when not debugging.
+    '''
+
+    if not log.isEnabledFor(logging.DEBUG):
+        return
+
+    import inspect
+    prev = inspect.stack(1)[1]
+    cname = "%s:%s:%s" % (prev[0], prev[1], prev[2])
+
+    import traceback
+    log.debug("%s: BEGIN dumpframe() for %s", header, cname)
+
+    # Get the call stack minus this call to dumpframe().
+    stack = traceback.format_stack()[:-1]
+    if depth < len(stack):
+        stack = stack[(-depth):]
+
+    for n, line in enumerate(stack):
+        log.debug("frame[%d]: %s", depth-n, line.rstrip())
+    log.debug("%s: END   dumpframe() for %s", header, cname)
+
+#
+# hashlist_op_impl exclusion processing.
+#
 
 
 def is_dir_excluded(fpath, direx, direx_glob, excluded_dirs=None):

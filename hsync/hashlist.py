@@ -70,8 +70,9 @@ class HashList(object):
         self.read_total = 0
 
     def close(self, want_sync=False):
-        log.debug("HashList.close() total reads %i writes %i",
-                  self.read_total, self.write_total)
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.close() total reads %i writes %i",
+                      self.read_total, self.write_total)
 
         # No point doing a commit if we're about to delete.
         if want_sync:
@@ -84,7 +85,8 @@ class HashList(object):
 
     def __del__(self):
         self.close()
-        log.debug("HashList.__del__(): removing filesystem objects")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.__del__(): removing filesystem objects")
         try:
             os.unlink(self.tmpname)
         except OSError:
@@ -94,7 +96,8 @@ class HashList(object):
         log.debug("HashList: Final exit")
 
     def sync(self):
-        log.debug("HashList.sync()")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.sync()")
         self.dbconn.commit()
 
     def _assert_filehash(self, fh):
@@ -132,7 +135,8 @@ class HashList(object):
         if anything other than a FileHash is offered.
         '''
         self._assert_filehash(fh)
-        log.debug("HashList.append('%s') cursize %i", fh, len(self))
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.append('%s') cursize %i", fh, len(self))
         strhash = fh.strhash()
         if self.raise_on_duplicates or self.warn_on_duplicates:
             fhl = self._fetch(strhash)
@@ -159,7 +163,8 @@ class HashList(object):
         return len(self.list)
 
     def __getitem__(self, index):
-        log.debug("HashList.__getitem__[%i]", index)
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.__getitem__[%i]", index)
         self.read_total += 1
         fh = self._fetch(self.list[index])
         return fh[0]
@@ -168,7 +173,8 @@ class HashList(object):
         return self.list_generator()
 
     def list_generator(self):
-        log.debug("HashList.list_generator()")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashList.list_generator()")
         for hashstr in self.list:
             yield self._fetch(hashstr)[0]
 
@@ -192,7 +198,8 @@ class HashDict(object):
         self._dict_from_list()
 
     def _dict_from_list(self):
-        log.debug("HashDict._dict_from_list()")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("HashDict._dict_from_list()")
         for fh in self.hl:
             if fh.fpath in self.hd:
                 raise UnexpectedDuplicateFilepathError()
