@@ -110,7 +110,7 @@ class FileHash(object):
         self.has_read_contents = False
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug("fullpath '%s'", self.fullpath)
+            log.debug("iff(): fullpath '%s'", self.fullpath)
 
         if trim:
             self.fpath = self.fullpath[len(root):]
