@@ -80,8 +80,18 @@ class UnsupportedModeError(CommandLineArgumentsError):
 
 # hashlist.py
 
+
 class NotAFileHashError(Exception):
     pass
 
+
 class DuplicateEntryInHashListError(Exception):
+    pass
+
+
+class InitialiserNotAHashListError(Exception):
+    pass
+
+
+class UnexpectedDuplicateFilepathError(Exception):
     pass

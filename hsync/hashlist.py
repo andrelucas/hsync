@@ -175,3 +175,60 @@ class HashList(object):
     def sort_by_path(self):
         '''Sort the hashlist by the FileHash.fpath field.'''
         self.list.sort(key=lambda hashstr: self._fetch(hashstr)[0].fpath)
+
+
+class HashDict(object):
+    '''
+    A path-indexed lookup dict for a HashList.
+    '''
+
+    def __init__(self, hashlist=None):
+        if hashlist is None or type(hashlist) != HashList:
+            log.error("HashDict() must be initialised with a HashList")
+            raise InitialiserNotAHashListError()
+
+        self.hl = hashlist
+        self.hd = {}
+        self._dict_from_list()
+
+    def _dict_from_list(self):
+        log.debug("HashDict._dict_from_list()")
+        for fh in self.hl:
+            if fh.fpath in self.hd:
+                raise UnexpectedDuplicateFilepathError()
+            self.hd[fh.fpath] = fh.strhash()
+
+    def __getitem__(self, key):
+        if key is None or key == '':
+            raise KeyError()
+
+        fh = self.hl._fetch(self.hd[key])[0]
+        return fh
+
+    def __setitem__(self, key, value):
+        raise KeyError("HashDict does not allow direct writes")
+
+    def __iter__(self):
+        return self.key_generator()
+
+    def keys(self):
+        return self.key_generator()
+
+    def iterkeys(self):
+        return self.key_generator()
+
+    def key_generator(self):
+        for k in self.hd.iterkeys():
+            yield k
+
+    def items(self):
+        return self.dict_generator()
+
+    def iteritems(self):
+        return self.dict_generator()
+
+    def dict_generator(self):
+        log.debug("HashDict.dict_generator()")
+        for k, v in self.hd.iteritems():
+            yield k, self[k]
+

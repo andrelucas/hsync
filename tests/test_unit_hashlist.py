@@ -108,7 +108,7 @@ class HashListTestCase(unittest.TestCase):
         pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
         for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.2i' % n)
+            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
             fhlist.append(fh)
 
         hl.extend(fhlist)
@@ -118,18 +118,103 @@ class HashListTestCase(unittest.TestCase):
             self.assertEqual(fh, fhlist[n])
 
     def test_list_indexing(self):
-        '''Check we can iterate over the list properly'''
+        '''Check we can index the list properly'''
         hl = HashList()
 
         fhlist = []
         pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
         for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.2i' % n)
+            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
             fhlist.append(fh)
 
         hl.extend(fhlist)
         self.assertEqual(len(hl), len(fhlist))
 
-        for n in xrange(100):
+        for n in xrange(1000):
             self.assertEqual(hl[n], fhlist[n])
+
+
+class HashDictTestCase(unittest.TestCase):
+
+    me = inspect.getfile(inspect.currentframe())
+    topdir = os.path.join(os.path.dirname(me), 'test')
+
+    mapper = UidGidMapper()
+
+    @classmethod
+    def setUpClass(self):
+        self.user = self.mapper.get_name_for_uid(os.getuid())
+        self.group = self.mapper.get_group_for_gid(os.getgid())
+
+    def tearDown(self):
+        if hasattr(self, 'tmp') and self.tmp:
+            shutil.rmtree(self.tmp, True)
+
+    def test_init(self):
+        '''Object creation tests'''
+        with self.assertRaises(InitialiserNotAHashListError):
+            HashDict()
+
+        hl = HashList()
+        hd = HashDict(hl)
+
+    def test_lookup(self):
+        '''Check objects can be looked up'''
+        hl = HashList()
+        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                       (self.user, self.group))
+        # This should not raise.
+        hl.append(fh)
+        hd = HashDict(hl)
+        nfh = hd[fh.fpath]
+        self.assertIsInstance(nfh, FileHash, 'HashDict returns FileHash')
+        self.assertEqual(fh, nfh, 'HashDict returns same FileHash')
+
+    def test_multi_lookup(self):
+        '''Check we can index the dict properly'''
+        hl = HashList()
+
+        fhlist = []
+        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+
+        for n in xrange(1000):
+            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+            fhlist.append(fh)
+
+        hl.extend(fhlist)
+        self.assertEqual(len(hl), len(fhlist))
+
+        hd = HashDict(hl)
+
+        for fh in fhlist:
+            nfh = hd[fh.fpath]
+            self.assertEqual(fh, nfh, 'Path-based lookup works')
+
+    def test_iter(self):
+        '''Check we can index the dict properly'''
+        hl = HashList()
+
+        fhlist = []
+        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+
+        for n in xrange(1000):
+            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+            fhlist.append(fh)
+
+        hl.extend(fhlist)
+        self.assertEqual(len(hl), len(fhlist))
+
+        hd = HashDict(hl)
+        # Could use enumerate() below, but it makes a mess of the already-
+        # messy generator expression used to get sorted keys.
+        curfile = 0
+
+        for k, v in ((k, hd[k]) for k in sorted(hd.iterkeys())):
+            self.assertIsInstance(k, str, 'Key is correct type')
+            self.assertIsInstance(v, FileHash, 'Value is correct type')
+            self.assertEqual(v.fpath, 'test%0.3i' % curfile,
+                             'Correct file returned')
+            curfile += 1
+            print(k, v)
+
