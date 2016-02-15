@@ -228,23 +228,22 @@ class HashDict(object):
             # self._dumpframe()
             yield k
 
-    def _dumpframe(self):
-        import traceback
-        for line in traceback.format_stack():
-            log.debug("XXX trace: %s", line)
-
     def keys(self):
-        for k in self.hd.iterkeys():
-            yield k
+        return self.keys_gen()
 
     def iterkeys(self):
+        return self.keys_gen()
+
+    def keys_gen(self):
         for k in self.hd.iterkeys():
             yield k
 
     def items(self):
-        for k, v in self.hd.iteritems():
-            yield k, self[k]
+        return self.items_gen()
 
     def iteritems(self):
+        return self.items_gen()
+
+    def items_gen(self):
         for k, v in self.hd.iteritems():
             yield k, self[k]
