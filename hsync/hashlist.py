@@ -203,32 +203,41 @@ class HashDict(object):
             raise KeyError()
 
         fh = self.hl._fetch(self.hd[key])[0]
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("XXX HashDict.__getitem__[%s]: %s", key, fh)
         return fh
+
+    def __contains__(self, key):
+        return key in self.hd
 
     def __setitem__(self, key, value):
         raise KeyError("HashDict does not allow direct writes")
 
     def __iter__(self):
-        return self.key_generator()
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("XXX HashDict.__iter__()")
+        for k in self.hd.iterkeys():
+            # log.debug("XXX HashDict.__iter__() pre-yield:")
+            # self._dumpframe()
+            yield k
+
+    def _dumpframe(self):
+        import traceback
+        for line in traceback.format_stack():
+            log.debug("XXX trace: %s", line)
 
     def keys(self):
-        return self.key_generator()
+        for k in self.hd.iterkeys():
+            yield k
 
     def iterkeys(self):
-        return self.key_generator()
-
-    def key_generator(self):
         for k in self.hd.iterkeys():
             yield k
 
     def items(self):
-        return self.dict_generator()
-
-    def iteritems(self):
-        return self.dict_generator()
-
-    def dict_generator(self):
-        log.debug("HashDict.dict_generator()")
         for k, v in self.hd.iteritems():
             yield k, self[k]
 
+    def iteritems(self):
+        for k, v in self.hd.iteritems():
+            yield k, self[k]
