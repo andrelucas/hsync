@@ -229,3 +229,33 @@ class HashDictTestCase(unittest.TestCase):
                                  'Correct file returned')
                 curfile += 1
                 print(k, v)
+
+    def test_sort(self):
+        '''Check the keys are in path order'''
+        for T in self.all_impl:
+            pfx = "0 100644 %s %s 0 0 " % (self.user, self.group)
+
+            pathlist = [
+                        ['a', 'a/1', 'a/2', 'b'],
+                        ['b', 'a/1', 'a/2', 'a', 'c'],
+                        ['z', 'y', 'x', 'w'],
+                       ]
+
+            for paths in pathlist:
+
+                hl = T()
+                sorted_paths = sorted(paths)
+
+                fhlist = []
+                for f in paths:
+                    fh = FileHash.init_from_string(pfx + f)
+                    fhlist.append(fh)
+
+                hl.extend(fhlist)
+                fd = HashDict(hl)
+
+                for n, (k, fh) in enumerate(fd.iteritems()):
+                    # The dict keys are the path.
+                    self.assertEqual(k, sorted_paths[n])
+                    # Check the object as well, for good measure.
+                    self.assertEqual(fh.fpath, sorted_paths[n])

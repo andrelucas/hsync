@@ -27,9 +27,11 @@
 
 from __future__ import print_function
 
+from collections import OrderedDict
+import logging
+
 from exceptions import *
 from filehash import FileHash
-import logging
 
 log = logging.getLogger()
 
@@ -137,6 +139,7 @@ class HashList(object):
 
     def sort_by_path(self):
         '''Sort the hashlist by the FileHash.fpath field.'''
+        log.debug("HashList.sort_by_path()")
         self.list.sort(key=lambda fh: fh.fpath)
 
 
@@ -158,8 +161,17 @@ class HashDict(object):
         if log.isEnabledFor(logging.DEBUG):
             log.debug("HashDict._dict_from_list()")
 
+        # Create a hash mapping path to list index.
+        path_to_index = {}
         for n, fh in enumerate(self.hl):
-            self.hd[fh.fpath] = n
+            path_to_index[fh.fpath] = n
+
+        # Create an OrderedDict in pathname order. Now, an enumeration of
+        # the dict will walk the tree in path order, returning the index into
+        # the list of FileHash objects.
+        self.hd = OrderedDict()
+        for path in sorted(path_to_index.iterkeys()):
+            self.hd[path] = path_to_index[path]
 
     def __getitem__(self, key):
         if key is None or key == '':

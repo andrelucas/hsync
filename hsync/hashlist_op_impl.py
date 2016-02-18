@@ -367,6 +367,8 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     a list of FileHash objects for the destination path.
     '''
 
+    log.debug("hashlist_check():")
+
     src_fdict = hashlist_to_dict(src_hashlist)
 
     # Take the simple road. Generate a hashlist for the destination.
@@ -406,7 +408,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
     if opts.set_group:
         mapper.set_default_group(opts.set_group)
 
-    for fpath, fh in [(k, src_fdict[k]) for k in sorted(src_fdict.keys())]:
+    for fpath, fh in src_fdict.iteritems():
 
         # Generate (pointless) stat.
         if not fh.is_dir and fh.size_is_known:
