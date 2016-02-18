@@ -179,6 +179,7 @@ class FileHash(object):
                 "%s: File type '%s' is unsupported" %
                 (self.fullpath, self._type_to_string(mode)))
 
+        self.strhash_value = self.hash_value = None
         self.hash_safe = True
         return self
 
@@ -263,6 +264,7 @@ class FileHash(object):
                 "%s: File type '%s' is unsupported" %
                 (self.fullpath, self._type_to_string(mode)))
 
+        self.strhash_value = self.hash_value = None
         self.hash_safe = True
         return self
 
@@ -567,11 +569,16 @@ class FileHash(object):
     # not to copy them; use compare() for that.
 
     def hash(self):
-        return (self.fullpath, self.size, self.mode, self.mtime,
-                self.uid, self.gid, self.hashstr)
+        if self.hash_value is None:
+            self.hash_value = (self.fullpath, self.size, self.mode,
+                               self.mtime, self.uid, self.gid, self.hashstr)
+        return self.hash_value
 
     def strhash(self):
-        return str(self.hash)
+        if self.strhash_value is None:
+            h = hashlib.md5(str(self.hash()))
+            self.strhash_value = h.digest().encode('base64')[:6]
+        return self.strhash_value
 
     def __hash__(self):
         return self.strhash()
