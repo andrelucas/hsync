@@ -30,6 +30,9 @@ import logging
 import os
 import urlparse
 
+from hashlist import HashList
+from hashlist_sqlite import SqliteHashList
+
 log = logging.getLogger()
 
 
@@ -78,10 +81,28 @@ def dumpframe(header="", depth=4):
         log.debug("frame[%d]: %s", depth-n, line.rstrip())
     log.debug("%s: END   dumpframe() for %s", header, cname)
 
+
+#
+# Return the correct HashList type based on the options given by the user.
+#
+
+def get_hashlist(opts):
+    '''
+    If the user asks to reduce memory use, return a disk-backed HashList
+    object, which will obviously run much more slowly than the default
+    memory-backed HashList object.
+    '''
+
+    if opts.use_less_memory:
+        log.debug("get_hashlist(): Returning Sqlite-backed hashlist object")
+        return SqliteHashList()
+    else:
+        log.debug("get_hashlist(): Returning memory-backed hashlist object")
+        return HashList()
+
 #
 # hashlist_op_impl exclusion processing.
 #
-
 
 def is_dir_excluded(fpath, direx, direx_glob, excluded_dirs=None):
     '''

@@ -34,6 +34,7 @@ import unittest
 from hsync.exceptions import *
 from hsync.filehash import *
 from hsync.hashlist import *
+from hsync.hashlist_sqlite import *
 from hsync.idmapper import *
 
 
@@ -44,6 +45,8 @@ class HashListTestCase(unittest.TestCase):
 
     mapper = UidGidMapper()
 
+    all_impl = HashList, SqliteHashList
+
     @classmethod
     def setUpClass(self):
         self.user = self.mapper.get_name_for_uid(os.getuid())
@@ -55,84 +58,86 @@ class HashListTestCase(unittest.TestCase):
 
     def test_init(self):
         '''Object creation tests'''
-        hl = HashList()
-        self.assertIsNotNone(hl, "Non-null object returned")
+        for T in self.all_impl:
+            log.warning("XXX T %s", T)
+            hl = T()
+            self.assertIsNotNone(hl, "Non-null object returned")
 
     def test_append(self):
         '''Object can be appended'''
-        hl = HashList()
-
-        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
-                                       (self.user, self.group))
-
-        # This should not raise.
-        hl.append(fh)
-
-        # Attempting to append a non-FileHash should raise.
-        with self.assertRaises(NotAFileHashError):
-            hl.append(None)
-        with self.assertRaises(NotAFileHashError):
-            hl.append("Nope")
+        for T in self.all_impl:
+            hl = T()
+            fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                           (self.user, self.group))
+            # This should not raise.
+            hl.append(fh)
+            # Attempting to append a non-FileHash should raise.
+            with self.assertRaises(NotAFileHashError):
+                hl.append(None)
+            with self.assertRaises(NotAFileHashError):
+                hl.append("Nope")
 
     def test_duplicate_raise(self):
         '''Check exceptions are properly raised'''
-        hl = HashList(raise_on_duplicates=True)
+        for T in self.all_impl:
+            hl = T(raise_on_duplicates=True)
 
-        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
-                                       (self.user, self.group))
+            fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                           (self.user, self.group))
 
-        # This should not raise.
-        hl.append(fh)
-        self.assertEqual(len(hl), 1)
-        # Duplicate should raise.
-        with self.assertRaises(DuplicateEntryInHashListError):
+            # This should not raise.
             hl.append(fh)
+            self.assertEqual(len(hl), 1)
+            # Duplicate should raise.
+            with self.assertRaises(DuplicateEntryInHashListError):
+                hl.append(fh)
 
-        '''Check exceptions are properly raised'''
-        hl = HashList(raise_on_duplicates=False)
+            '''Check exceptions are properly raised'''
+            hl = T(raise_on_duplicates=False)
 
-        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
-                                       (self.user, self.group))
+            fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                           (self.user, self.group))
 
-        # This should not raise.
-        hl.append(fh)
-        # Duplicate should not raise.
-        hl.append(fh)
-        self.assertEqual(len(hl), 2)
+            # This should not raise.
+            hl.append(fh)
+            # Duplicate should not raise.
+            hl.append(fh)
+            self.assertEqual(len(hl), 2)
 
     def test_list_iterator(self):
         '''Check we can iterate over the list properly'''
-        hl = HashList()
+        for T in self.all_impl:
+            hl = T()
 
-        fhlist = []
-        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+            fhlist = []
+            pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
-            fhlist.append(fh)
+            for n in xrange(1000):
+                fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+                fhlist.append(fh)
 
-        hl.extend(fhlist)
-        self.assertEqual(len(hl), len(fhlist))
+            hl.extend(fhlist)
+            self.assertEqual(len(hl), len(fhlist))
 
-        for n, fh in enumerate(hl):
-            self.assertEqual(fh, fhlist[n])
+            for n, fh in enumerate(hl):
+                self.assertEqual(fh, fhlist[n])
 
     def test_list_indexing(self):
         '''Check we can index the list properly'''
-        hl = HashList()
+        for T in self.all_impl:
+            hl = T()
+            fhlist = []
+            pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        fhlist = []
-        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+            for n in xrange(1000):
+                fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+                fhlist.append(fh)
 
-        for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
-            fhlist.append(fh)
+            hl.extend(fhlist)
+            self.assertEqual(len(hl), len(fhlist))
 
-        hl.extend(fhlist)
-        self.assertEqual(len(hl), len(fhlist))
-
-        for n in xrange(1000):
-            self.assertEqual(hl[n], fhlist[n])
+            for n in xrange(1000):
+                self.assertEqual(hl[n], fhlist[n])
 
 
 class HashDictTestCase(unittest.TestCase):
@@ -142,6 +147,8 @@ class HashDictTestCase(unittest.TestCase):
 
     mapper = UidGidMapper()
 
+    all_impl = HashList, SqliteHashList
+
     @classmethod
     def setUpClass(self):
         self.user = self.mapper.get_name_for_uid(os.getuid())
@@ -153,68 +160,72 @@ class HashDictTestCase(unittest.TestCase):
 
     def test_init(self):
         '''Object creation tests'''
+
         with self.assertRaises(InitialiserNotAHashListError):
             HashDict()
 
-        hl = HashList()
-        hd = HashDict(hl)
+        for T in self.all_impl:
+            hl = T()
+            HashDict(hl)
 
     def test_lookup(self):
         '''Check objects can be looked up'''
-        hl = HashList()
-        fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
-                                       (self.user, self.group))
-        # This should not raise.
-        hl.append(fh)
-        hd = HashDict(hl)
-        nfh = hd[fh.fpath]
-        self.assertIsInstance(nfh, FileHash, 'HashDict returns FileHash')
-        self.assertEqual(fh, nfh, 'HashDict returns same FileHash')
+        for T in self.all_impl:
+            hl = T()
+            fh = FileHash.init_from_string("0 100644 %s %s 0 0 test" %
+                                           (self.user, self.group))
+            # This should not raise.
+            hl.append(fh)
+            hd = HashDict(hl)
+            nfh = hd[fh.fpath]
+            self.assertIsInstance(nfh, FileHash, 'HashDict returns FileHash')
+            self.assertEqual(fh, nfh, 'HashDict returns same FileHash')
 
     def test_multi_lookup(self):
         '''Check we can index the dict properly'''
-        hl = HashList()
+        for T in self.all_impl:
+            hl = T()
 
-        fhlist = []
-        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+            fhlist = []
+            pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
-            fhlist.append(fh)
+            for n in xrange(1000):
+                fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+                fhlist.append(fh)
 
-        hl.extend(fhlist)
-        self.assertEqual(len(hl), len(fhlist))
+            hl.extend(fhlist)
+            self.assertEqual(len(hl), len(fhlist))
 
-        hd = HashDict(hl)
+            hd = HashDict(hl)
 
-        for fh in fhlist:
-            nfh = hd[fh.fpath]
-            self.assertEqual(fh, nfh, 'Path-based lookup works')
+            for fh in fhlist:
+                nfh = hd[fh.fpath]
+                self.assertEqual(fh, nfh, 'Path-based lookup works')
 
     def test_iter(self):
         '''Check we can index the dict properly'''
-        hl = HashList()
+        for T in self.all_impl:
+            hl = T()
 
-        fhlist = []
-        pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
+            fhlist = []
+            pfx = "0 100644 %s %s 0 0 test" % (self.user, self.group)
 
-        for n in xrange(1000):
-            fh = FileHash.init_from_string(pfx + '%0.3i' % n)
-            fhlist.append(fh)
+            for n in xrange(1000):
+                fh = FileHash.init_from_string(pfx + '%0.3i' % n)
+                fhlist.append(fh)
 
-        hl.extend(fhlist)
-        self.assertEqual(len(hl), len(fhlist))
+            hl.extend(fhlist)
+            self.assertEqual(len(hl), len(fhlist))
 
-        hd = HashDict(hl)
-        # Could use enumerate() below, but it makes a mess of the already-
-        # messy generator expression used to get sorted keys.
-        curfile = 0
+            hd = HashDict(hl)
+            # Could use enumerate() below, but it makes a mess of the already-
+            # messy generator expression used to get sorted keys.
+            curfile = 0
 
-        for k, v in ((k, hd[k]) for k in sorted(hd.iterkeys())):
-            self.assertIsInstance(k, str, 'Key is correct type')
-            self.assertIsInstance(v, FileHash, 'Value is correct type')
-            self.assertEqual(v.fpath, 'test%0.3i' % curfile,
-                             'Correct file returned')
-            curfile += 1
-            print(k, v)
-
+            for k, v in ((k, hd[k]) for k in sorted(hd.iterkeys())):
+                self.assertIsInstance(k, str, 'Key is correct type')
+                self.assertIsInstance(v, FileHash, 'Value is correct type')
+                self.assertEqual(v.fpath, 'test%0.3i' % curfile,
+                                 'Correct file returned')
+                curfile += 1
+                print(k, v)

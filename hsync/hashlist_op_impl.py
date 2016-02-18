@@ -37,7 +37,8 @@ import sys
 from exceptions import *
 from filehash import *
 from hashlist import *
-from utility import is_dir_excluded, is_path_pre_excluded, is_hashfile
+from utility import (get_hashlist, is_dir_excluded,
+                     is_path_pre_excluded, is_hashfile)
 
 log = logging.getLogger()
 
@@ -89,7 +90,7 @@ def hashlist_generate(srcpath, opts, source_mode=True,
         defer_fs_read = True
         source_extramsg = ' (with cache)'
 
-    hashlist = HashList()
+    hashlist = get_hashlist(opts)
 
     if not opts.quiet:
         if source_mode:
@@ -337,7 +338,7 @@ def hashlist_to_dict(hashlist):
 def hashlist_from_stringlist(strfile, opts, root=None):
 
     log.debug("hashlist_from_stringlist():")
-    hashlist = HashList()
+    hashlist = get_hashlist(opts)
     for l in strfile:
         if l.startswith("#"):
             pass  # FFR
@@ -396,7 +397,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         direx_glob = set()
 
     # Now compare the two dictionaries.
-    needed = HashList()
+    needed = get_hashlist(opts)
     excluded_dirs = set()
 
     mapper = UidGidMapper()
@@ -449,7 +450,7 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
             fh.dest_missing = True
             needed.append(fh)
 
-    not_needed = HashList()
+    not_needed = get_hashlist(opts)
     for fpath, fh in dst_fdict.iteritems():
         if fpath not in src_fdict:
             log.debug("%s: not found in source", fpath)

@@ -27,47 +27,35 @@
 
 from __future__ import print_function
 
-import cPickle
-import logging
-import os
-import shutil
-import sqlite3
-import tempfile
-
 from exceptions import *
 from filehash import FileHash
+import logging
 
 log = logging.getLogger()
 
 
 class HashList(object):
     '''
-    A disk-backed list of objects. Used when there are far more objects
-    than can be comfortably stored in memory.
+    A memory-backed list of objects. Fast, but requires that all the objects
+    and their collections to fit in memory.
     '''
-
-    # Sync the database every so many writes. (XXX necessary for sqlite?)
-    # force_sync_count = 100000
 
     def __init__(self,
                  warn_on_duplicates=True, raise_on_duplicates=True,
                  delete_on_close=True):
         log.debug("Hashlist __init__()")
-        self.tmpd = tempfile.mkdtemp()  # XXX spec? test?
-        self.tmpname = tempfile.mktemp("", "hashlist.", self.tmpd)
-        log.debug("Hashlist: open sqlite3 database on '%s'", self.tmpname)
-        self.dbconn = sqlite3.connect(self.tmpname)
 
-        self.cur = self.dbconn.cursor()
-        self.cur.execute("create table fh (hash str, blob blob)")
-        self.cur.execute("create index fhindex on fh(hash)")
-
-        self.list = []
         self.warn_on_duplicates = warn_on_duplicates
         self.raise_on_duplicates = raise_on_duplicates
         self.write_count = 0
         self.write_total = 0
         self.read_total = 0
+        self.storage_init()
+
+    def storage_init(self):
+        log.debug("HashList _storage_init()")
+        self.list = []
+        self.dup_detect = set()
 
     def close(self, want_sync=False):
         if log.isEnabledFor(logging.DEBUG):
@@ -78,27 +66,12 @@ class HashList(object):
         if want_sync:
             self.sync()
 
-        self.cur = None
-        if self.dbconn is not None:
-            self.dbconn.close()
-        self.dbconn = None
-
     def __del__(self):
         self.close()
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("HashList.__del__(): removing filesystem objects")
-        try:
-            os.unlink(self.tmpname)
-        except OSError:
-            pass  # Don't care if it fails.
-
-        shutil.rmtree(self.tmpd, True)  # Don't care if this fails either.
         log.debug("HashList: Final exit")
 
     def sync(self):
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("HashList.sync()")
-        self.dbconn.commit()
+        pass
 
     def _assert_filehash(self, fh):
         '''Raise NotAFileHashError unless fh is a FileHash'''
@@ -108,26 +81,10 @@ class HashList(object):
     def write_increment(self):
         self.write_count += 1
         self.write_total += 1
-        # if self.write_count >= self.force_sync_count:
-        #     log.debug("HashList: sync() after %i writes", self.write_count)
-        #     self.sync()
-        #     self.write_count = 0
 
     def _insert(self, fh):
         '''Insert the given filehash into the database.'''
-        pdata = cPickle.dumps(fh, cPickle.HIGHEST_PROTOCOL)
-        self.cur.execute('insert into fh (hash, blob) values (:hs, :blob)',
-                         {"hs": fh.strhash(), "blob": sqlite3.Binary(pdata)})
-
-    def _fetch(self, hashstr):
-        '''Retrieve filehashes with the given hashstr.'''
-        self.cur.execute('select (blob) from fh where hash = :hs',
-                         {"hs": hashstr})
-        fhlist = []
-        for row in self.cur:
-            fhlist.append(cPickle.loads(str(row[0])))
-
-        return fhlist
+        self.list.append(fh)
 
     def append(self, fh):
         '''
@@ -135,20 +92,21 @@ class HashList(object):
         if anything other than a FileHash is offered.
         '''
         self._assert_filehash(fh)
+        strhash = fh.strhash()
+
         if log.isEnabledFor(logging.DEBUG):
             log.debug("HashList.append('%s') cursize %i", fh, len(self))
-        strhash = fh.strhash()
+
         if self.raise_on_duplicates or self.warn_on_duplicates:
-            fhl = self._fetch(strhash)
-            if len(fhl) > 0:
+            if strhash in self.dup_detect:
                 if self.raise_on_duplicates:
                     raise DuplicateEntryInHashListError()
                 if self.warn_on_duplicates:
                     log.warning("Duplicate entry for hash '%s' in HashList",
                                 strhash)
+            self.dup_detect.add(strhash)
 
-        self._insert(fh)
-        self.list.append(strhash)
+        self.list.append(fh)
         self.write_increment()
 
     def extend(self, fhlist):
@@ -166,8 +124,7 @@ class HashList(object):
         if log.isEnabledFor(logging.DEBUG):
             log.debug("HashList.__getitem__[%i]", index)
         self.read_total += 1
-        fh = self._fetch(self.list[index])
-        return fh[0]
+        return self.list[index]
 
     def __iter__(self):
         return self.list_generator()
@@ -175,12 +132,12 @@ class HashList(object):
     def list_generator(self):
         if log.isEnabledFor(logging.DEBUG):
             log.debug("HashList.list_generator()")
-        for hashstr in self.list:
-            yield self._fetch(hashstr)[0]
+        for fh in self.list:
+            yield fh
 
     def sort_by_path(self):
         '''Sort the hashlist by the FileHash.fpath field.'''
-        self.list.sort(key=lambda hashstr: self._fetch(hashstr)[0].fpath)
+        self.list.sort(key=lambda fh: fh.fpath)
 
 
 class HashDict(object):
@@ -189,7 +146,7 @@ class HashDict(object):
     '''
 
     def __init__(self, hashlist=None):
-        if hashlist is None or type(hashlist) != HashList:
+        if hashlist is None or not isinstance(hashlist, HashList):
             log.error("HashDict() must be initialised with a HashList")
             raise InitialiserNotAHashListError()
 
@@ -200,18 +157,17 @@ class HashDict(object):
     def _dict_from_list(self):
         if log.isEnabledFor(logging.DEBUG):
             log.debug("HashDict._dict_from_list()")
-        for fh in self.hl:
-            if fh.fpath in self.hd:
-                raise UnexpectedDuplicateFilepathError()
-            self.hd[fh.fpath] = fh.strhash()
+
+        for n, fh in enumerate(self.hl):
+            self.hd[fh.fpath] = n
 
     def __getitem__(self, key):
         if key is None or key == '':
             raise KeyError()
 
-        fh = self.hl._fetch(self.hd[key])[0]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("XXX HashDict.__getitem__[%s]: %s", key, fh)
+        fh = self.hl[self.hd[key]]
+        # if log.isEnabledFor(logging.DEBUG):
+        #     log.debug("XXX HashDict.__getitem__[%s]: %s", key, fh)
         return fh
 
     def __contains__(self, key):
@@ -221,8 +177,8 @@ class HashDict(object):
         raise KeyError("HashDict does not allow direct writes")
 
     def __iter__(self):
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("XXX HashDict.__iter__()")
+        # if log.isEnabledFor(logging.DEBUG):
+        #     log.debug("XXX HashDict.__iter__()")
         for k in self.hd.iterkeys():
             # log.debug("XXX HashDict.__iter__() pre-yield:")
             # self._dumpframe()
