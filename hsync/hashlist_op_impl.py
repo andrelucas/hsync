@@ -417,6 +417,13 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
         assert fpath == fh.fpath
 
         # Process exclusions.
+
+        filename = os.path.basename(fpath)
+        if filename != '' and \
+                is_hashfile(filename, custom_hashfile=opts.hash_file):
+            log.debug("needed: skipping hash file or lock '%s'", filename)
+            continue
+
         if is_path_pre_excluded(fpath, excluded_dirs):
             continue
 
@@ -454,6 +461,13 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
     not_needed = get_hashlist(opts)
     for fpath, fh in dst_fdict.iteritems():
+
+        filename = os.path.basename(fpath)
+        if filename != '' and \
+                is_hashfile(filename, custom_hashfile=opts.hash_file):
+            log.debug("not_needed: skipping hash file or lock '%s'", filename)
+            continue
+
         if fpath not in src_fdict:
             log.debug("%s: not found in source", fpath)
             not_needed.append(fh)
