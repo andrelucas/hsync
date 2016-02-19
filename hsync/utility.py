@@ -14,16 +14,16 @@
 #       names of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 # DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 # (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 # LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import fnmatch
 import logging
@@ -156,9 +156,9 @@ def is_path_pre_excluded(fpath, excluded_dirs, is_dir=False):
     return False
 
 
-##
-## Inclusion processing.
-##
+#
+# Inclusion processing.
+#
 
 def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
                      is_dir=False):
@@ -207,9 +207,9 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
     return include
 
 
-##
-## Hashfile detection.
-##
+#
+# Hashfile detection.
+#
 
 def is_hashfile(filename, custom_hashfile=None,
                 allow_locks=True, allow_compressed=True):
@@ -243,7 +243,6 @@ def is_hashfile(filename, custom_hashfile=None,
     if allow_compressed and allow_locks and filename == 'HSYNC.SIG.gz.lock':
         return True
 
-
     if custom_hashfile is not None and custom_hashfile != 'HSYNC.SIG':
         if filename == custom_hashfile:
             return True
@@ -252,7 +251,7 @@ def is_hashfile(filename, custom_hashfile=None,
         if allow_compressed and filename == '%s.gz' % custom_hashfile:
             return True
         if (allow_compressed and allow_locks and
-            filename == '%s.gz.lock' % custom_hashfile):
+                filename == '%s.gz.lock' % custom_hashfile):
             return True
 
     return False
