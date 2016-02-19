@@ -130,6 +130,11 @@ def getopts(cmdargs):
                     "checksum the file, which has the effect of rendering it "
                     "invisible (and deletable!) on the client side. On the "
                     "client side, it prevents processing of the path.")
+    meta.add_option("--no-guess-sigfiles", action="store_false",
+                    default=True, dest="guess_sigfiles",
+                    help="Don't assume files with name "
+                    "'*-HSYNC.SIG[.lock][.gz]' are lockfiles. You normally "
+                    "want this left on.")
     meta.add_option("--fetch-blocksize", default=32 * 1000,
                     help="Specify the number of bytes to retrieve at a time "
                     "[default: %default]")

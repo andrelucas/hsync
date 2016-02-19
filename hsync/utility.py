@@ -212,7 +212,7 @@ def is_path_included(fpath, inclist, inclist_glob, included_dirs=None,
 #
 
 def is_hashfile(filename, custom_hashfile=None,
-                allow_locks=True, allow_compressed=True):
+                allow_locks=True, allow_compressed=True, guess_sigfiles=True):
 
     '''
     Given a path, return True if it looks like a hashfile, False
@@ -233,15 +233,26 @@ def is_hashfile(filename, custom_hashfile=None,
     if filename == 'HSYNC.SIG':
         return True
 
+    if guess_sigfiles and filename.endswith('-HSYNC.SIG'):
+        return True
+
     if allow_locks:
         if filename == 'HSYNC.SIG.lock':
             return True
+        if guess_sigfiles and filename.endswith('-HSYNC.SIG.lock'):
+            return True
 
-    if allow_compressed and filename == 'HSYNC.SIG.gz':
-        return True
+    if allow_compressed:
+        if filename == 'HSYNC.SIG.gz':
+            return True
+        if guess_sigfiles and filename.endswith('-HSYNC.SIG.gz'):
+            return True
 
-    if allow_compressed and allow_locks and filename == 'HSYNC.SIG.gz.lock':
-        return True
+    if allow_compressed and allow_locks:
+        if filename == 'HSYNC.SIG.gz.lock':
+            return True
+        if guess_sigfiles and filename.endswith('-HSYNC.SIG.gz.lock'):
+            return True
 
     if custom_hashfile is not None and custom_hashfile != 'HSYNC.SIG':
         if filename == custom_hashfile:

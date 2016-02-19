@@ -238,13 +238,26 @@ class UtilityHashfileUnitTestCase(unittest.TestCase):
         '''Custom hashfile spec'''
         override = 'custom-HSYNC.SIG'
         self.assertTrue(is_hashfile('HSYNC.SIG', custom_hashfile=override))
+        self.assertTrue(is_hashfile('other-HSYNC.SIG',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('other-HSYNC.SIG',
+                                     custom_hashfile=override,
+                                     guess_sigfiles=False))
         self.assertTrue(is_hashfile(override, custom_hashfile=override))
         self.assertFalse(is_hashfile('not-a-hashfile',
                                      custom_hashfile=override))
         self.assertTrue(is_hashfile('HSYNC.SIG.gz', custom_hashfile=override))
+        self.assertTrue(is_hashfile('other-HSYNC.SIG.gz',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('other-HSYNC.SIG.gz',
+                                     custom_hashfile=override,
+                                     guess_sigfiles=False))
         self.assertTrue(is_hashfile('%s.gz' % override,
                                     custom_hashfile=override))
         self.assertFalse(is_hashfile('HSYNC.SIG.gz',
+                                     custom_hashfile=override,
+                                     allow_compressed=False))
+        self.assertFalse(is_hashfile('other-HSYNC.SIG.gz',
                                      custom_hashfile=override,
                                      allow_compressed=False))
         self.assertFalse(is_hashfile('%s.gz' % override,
@@ -260,6 +273,11 @@ class UtilityHashfileUnitTestCase(unittest.TestCase):
 
         self.assertTrue(is_hashfile('HSYNC.SIG.lock',
                                     custom_hashfile=override))
+        self.assertTrue(is_hashfile('other-HSYNC.SIG.lock',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('other-HSYNC.SIG.lock',
+                                     custom_hashfile=override,
+                                     guess_sigfiles=False))
         self.assertFalse(is_hashfile('HSYNC.SIG.lock',
                                      custom_hashfile=override,
                                      allow_locks=False))
@@ -271,6 +289,11 @@ class UtilityHashfileUnitTestCase(unittest.TestCase):
 
         self.assertTrue(is_hashfile('HSYNC.SIG.gz.lock',
                                     custom_hashfile=override))
+        self.assertTrue(is_hashfile('other-HSYNC.SIG.gz.lock',
+                                    custom_hashfile=override))
+        self.assertFalse(is_hashfile('other-HSYNC.SIG.gz.lock',
+                                     custom_hashfile=override,
+                                     guess_sigfiles=False))
         self.assertFalse(is_hashfile('HSYNC.SIG.gz.lock',
                                      custom_hashfile=override,
                                      allow_locks=False))

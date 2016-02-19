@@ -185,7 +185,8 @@ def hashlist_generate(srcpath, opts, source_mode=True,
             fpath = os.path.join(root, filename)
 
             # Don't include hashfiles or lockfiles.
-            if is_hashfile(filename, custom_hashfile=opts.hash_file):
+            if is_hashfile(filename, custom_hashfile=opts.hash_file,
+                           guess_sigfiles=opts.guess_sigfiles):
                 log.debug("Skipping hash file or lock '%s'", filename)
                 continue
 
@@ -347,7 +348,8 @@ def hashlist_from_stringlist(strfile, opts, root=None):
         else:
             fh = FileHash.init_from_string(l, opts.trim_path, root=root)
             fname = os.path.basename(fh.fullpath)
-            if is_hashfile(fname, opts.hash_file):
+            if is_hashfile(fname, opts.hash_file,
+                           guess_sigfiles=opts.guess_sigfiles):
                 log.debug("Skipping hash or lock file %s", fh.fullpath)
             else:
                 hashlist.append(fh)
@@ -420,7 +422,8 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         filename = os.path.basename(fpath)
         if filename != '' and \
-                is_hashfile(filename, custom_hashfile=opts.hash_file):
+                is_hashfile(filename, custom_hashfile=opts.hash_file,
+                            guess_sigfiles=opts.guess_sigfiles):
             log.debug("needed: skipping hash file or lock '%s'", filename)
             continue
 
@@ -464,7 +467,8 @@ def hashlist_check(dstpath, src_hashlist, opts, existing_hashlist=None,
 
         filename = os.path.basename(fpath)
         if filename != '' and \
-                is_hashfile(filename, custom_hashfile=opts.hash_file):
+                is_hashfile(filename, custom_hashfile=opts.hash_file,
+                            guess_sigfiles=opts.guess_sigfiles):
             log.debug("not_needed: skipping hash file or lock '%s'", filename)
             continue
 
