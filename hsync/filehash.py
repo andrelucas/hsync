@@ -577,7 +577,7 @@ class FileHash(object):
     def strhash(self):
         if self.strhash_value is None:
             h = hashlib.md5(str(self.hash()))
-            self.strhash_value = h.digest().encode('base64')[:6]
+            self.strhash_value = h.digest().encode('base64')
         return self.strhash_value
 
     def __hash__(self):
