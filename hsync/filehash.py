@@ -14,16 +14,16 @@
 #       names of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 # DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 # (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 # LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import hashlib
 import logging
@@ -110,7 +110,7 @@ class FileHash(object):
         self.has_read_contents = False
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug("fullpath '%s'", self.fullpath)
+            log.debug("iff(): fullpath '%s'", self.fullpath)
 
         if trim:
             self.fpath = self.fullpath[len(root):]
@@ -132,6 +132,7 @@ class FileHash(object):
         self.size_comparison_valid = False
         self.is_file = self.is_dir = self.is_link = False
         self.ignore = False
+        self.dest_missing = False  # Makes sense for a real fs object.
         self.has_real_hash = False
 
         if S_ISDIR(mode):
@@ -178,6 +179,7 @@ class FileHash(object):
                 "%s: File type '%s' is unsupported" %
                 (self.fullpath, self._type_to_string(mode)))
 
+        self.strhash_value = self.hash_value = None
         self.hash_safe = True
         return self
 
@@ -197,8 +199,8 @@ class FileHash(object):
         self.uid = self.mapper.get_uid_for_name(user)
         self.group = group
         self.gid = self.mapper.get_gid_for_group(group)
-        self.mtime = int(float(mtime))  # Robustness principle - old versions
-                                        # have float mtime.
+        # Robustness principle - old versions have float mtime.
+        self.mtime = int(float(mtime))
         self.size = int(size)  # XXX int length?
         self.size_is_known = True
 
@@ -214,8 +216,8 @@ class FileHash(object):
         self.size_comparison_valid = False
 
         self.ignore = False
-        #self.dest_missing = True
-        #self.contents_differ = False
+        self.dest_missing = True  # Safe default.
+        # self.contents_differ = False
         self.has_real_hash = False
 
         self.is_dir = self.is_link = self.is_file = False
@@ -227,7 +229,7 @@ class FileHash(object):
         elif S_ISLNK(mode):
             self.is_link = True
             self.has_real_hash = True
-            if not '>>>' in fpath:
+            if '>>>' not in fpath:
                 raise BadSymlinkFormatError(
                     "%s: Expected '>>>' in symlink hash" % fpath)
             (link, target) = fpath.split('>>>', 1)
@@ -262,6 +264,7 @@ class FileHash(object):
                 "%s: File type '%s' is unsupported" %
                 (self.fullpath, self._type_to_string(mode)))
 
+        self.strhash_value = self.hash_value = None
         self.hash_safe = True
         return self
 
@@ -334,9 +337,16 @@ class FileHash(object):
 
     def hash_file(self):
         log.debug("File: %s", self.fullpath)
-        f = open(self.fullpath, 'rb').read()  # Could read a *lot*.
+        block_size = 10 * 1000 * 1000
+        f = open(self.fullpath, 'rb')
         md = hashlib.sha256()
-        md.update(f)
+
+        while True:
+            data = f.read(block_size)
+            if not data:
+                break
+            md.update(data)
+
         log.debug("Hash for %s: %s", self.fpath, md.hexdigest())
         self.contents_hash = md.digest()
         self.hashstr = md.hexdigest()
@@ -553,3 +563,25 @@ class FileHash(object):
         # Convenient debugging representation.
         return ','.join([fh.fpath, '%06o' % fh.mode, str(fh.mtime),
                          fh.user, fh.group, str(fh.size)])
+
+    # These comparisons are for the purposes of object storage. They're
+    # not effective for comparing the files when determining whether or
+    # not to copy them; use compare() for that.
+
+    def hash(self):
+        if self.hash_value is None:
+            self.hash_value = (self.fullpath, self.size, self.mode,
+                               self.mtime, self.uid, self.gid, self.hashstr)
+        return self.hash_value
+
+    def strhash(self):
+        if self.strhash_value is None:
+            h = hashlib.md5(str(self.hash()))
+            self.strhash_value = h.digest().encode('base64')
+        return self.strhash_value
+
+    def __hash__(self):
+        return self.strhash()
+
+    def __eq__(self, other):
+        return self.hash() == other.hash()

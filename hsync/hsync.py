@@ -14,16 +14,16 @@
 #       names of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 # DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 # (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 # LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Simple sync-in-the-clear tool. Use SHA* and http to sync two
 # directories using only HTTP GET.
@@ -133,9 +133,12 @@ def getopts(cmdargs):
     meta.add_option("--fetch-blocksize", default=32 * 1000,
                     help="Specify the number of bytes to retrieve at a time "
                     "[default: %default]")
-    # This is used to pass stats around the app.
+    meta.add_option("--use-less-memory", action="store_true",
+                    help="Use far less memory but run MUCH more slowly")
+
+    # This kludge is used to pass stats around the app.
     meta.add_option("--stats", help=optparse.SUPPRESS_HELP)
-    # Debugging tools.
+    # Debugging tools, used by tests.
     meta.add_option("--scan-debug", action="store_true",
                     help=optparse.SUPPRESS_HELP)
     meta.add_option("--check-debug", action="store_true",
@@ -232,6 +235,10 @@ def main(cmdargs):
     if 'sha256' not in hashlib.algorithms:
         log.error("No SHA256 implementation in hashlib!")
         return False
+
+    if opt.use_less_memory:
+        print("NOTE: --use-less-memory mode is much slower, and consumes "
+              "more disk I/O")
 
     # Send-side.
     if opt.source_dir:
